@@ -1,0 +1,163 @@
+@import "tailwindcss";
+
+@font-face {
+  font-family: "IvyEpic";
+  src: url("../public/fonts/IvyEpic-Black.woff2") format("woff2"),
+    url("../public/fonts/IvyEpic-Black.woff") format("woff");
+  font-weight: 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "IvyEpic";
+  src: url("../public/fonts/IvyEpic-BlackItalic.woff2") format("woff2"),
+    url("../public/fonts/IvyEpic-BlackItalic.woff") format("woff");
+  font-weight: 900;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "IvyEpic";
+  src: url("../public/fonts/IvyEpic-Bold.woff2") format("woff2"),
+    url("../public/fonts/IvyEpic-Bold.woff") format("woff");
+  font-weight: bold;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "IvyEpic";
+  src: url("../public/fonts/IvyEpic-BoldItalic.woff2") format("woff2"),
+    url("../public/fonts/IvyEpic-BoldItalic.woff") format("woff");
+  font-weight: bold;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "IvyEpic";
+  src: url("../public/fonts/IvyEpic-ExtraBold.woff2") format("woff2"),
+    url("../public/fonts/IvyEpic-ExtraBold.woff") format("woff");
+  font-weight: bold;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "IvyEpic";
+  src: url("../public/fonts/IvyEpic-ExtraBoldItalic.woff2") format("woff2"),
+    url("../public/fonts/IvyEpic-ExtraBoldItalic.woff") format("woff");
+  font-weight: bold;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "IvyEpic";
+  src: url("../public/fonts/IvyEpic-ExtraLight.woff2") format("woff2"),
+    url("../public/fonts/IvyEpic-ExtraLight.woff") format("woff");
+  font-weight: 200;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "IvyEpic";
+  src: url("../public/fonts/IvyEpic-ExtraLightItalic.woff2") format("woff2"),
+    url("../public/fonts/IvyEpic-ExtraLightItalic.woff") format("woff");
+  font-weight: 200;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "IvyEpic";
+  src: url("../public/fonts/IvyEpic-Italic.woff2") format("woff2"),
+    url("../public/fonts/IvyEpic-Italic.woff") format("woff");
+  font-weight: normal;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "IvyEpic";
+  src: url("../public/fonts/IvyEpic-Light.woff2") format("woff2"),
+    url("../public/fonts/IvyEpic-Light.woff") format("woff");
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "IvyEpic";
+  src: url("../public/fonts/IvyEpic-LightItalic.woff2") format("woff2"),
+    url("../public/fonts/IvyEpic-LightItalic.woff") format("woff");
+  font-weight: 300;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "IvyEpic";
+  src: url("../public/fonts/IvyEpic-Medium.woff2") format("woff2"),
+    url("../public/fonts/IvyEpic-Medium.woff") format("woff");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "IvyEpic";
+  src: url("../public/fonts/IvyEpic-MediumItalic.woff2") format("woff2"),
+    url("../public/fonts/IvyEpic-MediumItalic.woff") format("woff");
+  font-weight: 500;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "IvyEpic";
+  src: url("../public/fonts/IvyEpic-Regular.woff2") format("woff2"),
+    url("../public/fonts/IvyEpic-Regular.woff") format("woff");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "IvyEpic";
+  src: url("../public/fonts/IvyEpic-SemiBold.woff2") format("woff2"),
+    url("../public/fonts/IvyEpic-SemiBold.woff") format("woff");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "IvyEpic";
+  src: url("../public/fonts/IvyEpic-SemiBoldItalic.woff2") format("woff2"),
+    url("../public/fonts/IvyEpic-SemiBoldItalic.woff") format("woff");
+  font-weight: 600;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "IvyEpic";
+  src: url("../public/fonts/IvyEpic-Thin.woff2") format("woff2"),
+    url("../public/fonts/IvyEpic-Thin.woff") format("woff");
+  font-weight: 100;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "IvyEpic";
+  src: url("../public/fonts/IvyEpic-ThinItalic.woff2") format("woff2"),
+    url("../public/fonts/IvyEpic-ThinItalic.woff") format("woff");
+  font-weight: 100;
+  font-style: italic;
+  font-display: swap;
+}

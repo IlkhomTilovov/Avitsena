@@ -1,0 +1,53 @@
+body {
+  font-family: "IvyEpic", sans-serif;
+  font-size: 16px;
+  src: url("./index.css") format("woff2");
+  font-display: swap;
+}
+
+.logo .ant-menu-item {
+  padding-left: 22px !important;
+}
+.logo .ant-menu-item:hover {
+  background-color: inherit !important;
+}
+.sidebarBtn .ant-menu-item {
+  background-color: #2b7fff !important;
+  color: #fff;
+}
+.lineGraph svg:focus-visible {
+  outline: none !important;
+}
+svg:focus {
+  outline: none !important;
+}
+
+.ant-select-tree-node-content-wrapper-open {
+  font-size: 14px !important;
+  font-weight: 500 !important;
+}
+.register .ant-select-single .ant-select-selector {
+  border-top-right-radius: 0px !important;
+  border-bottom-right-radius: 0px !important;
+}
+.seg .ant-segmented-item {
+  padding: 4px !important ;
+  font-weight: 500 !important;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+.remove-required .ant-form-item-label > label.ant-form-item-required::before {
+  display: none !important;
+}
+.upload .ant-upload.ant-upload-select {
+  width: 100% !important;
+  margin-top: 10px;
+}
+
+.upload .ant-upload-list-item.ant-upload-list-item-done {
+  padding-top: 10px !important;
+  font-size: 16px !important;
+  color: #00ba13;
+  padding-bottom: 10px !important;
+}

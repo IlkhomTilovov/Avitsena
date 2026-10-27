@@ -1,0 +1,61 @@
+services:
+  web:
+    restart: always
+    env_file:
+      - .env
+    build:
+      context: .
+      dockerfile: deployments/compose/django/Dockerfile
+    command: /start
+    ports:
+      - "${PORT}:8000"
+    depends_on:
+      - redis
+      - db
+    volumes:
+      - ./media:/app/media
+
+  db:
+    image: postgres:16
+    restart: always
+    ports:
+      - "5432:5432"
+    shm_size: '512mb'
+    env_file:
+      - .env
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    command:
+      - -c
+      - max_connections=100
+      - -c
+      - shared_buffers=1GB         # RAM 4GB bo‘lgani uchun xavfsiz
+      - -c
+      - work_mem=8MB               # so‘rovlar uchun ko‘proq ajratdik
+      - -c
+      - maintenance_work_mem=256MB # reindex va vacuum uchun
+      - -c
+      - effective_cache_size=3GB   # RAMning 75% ni cache sifatida
+      - -c
+      - wal_buffers=16MB
+      - -c
+      - min_wal_size=128MB
+      - -c
+      - max_wal_size=512MB
+      - -c
+      - checkpoint_completion_target=0.9
+      - -c
+      - random_page_cost=1.1
+
+  redis:
+    image: redis:7-alpine
+    restart: always
+    # ports:
+    #   - "6379:6379"
+
+volumes:
+  pg_data:
