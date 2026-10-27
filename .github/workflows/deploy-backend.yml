@@ -1,0 +1,49 @@
+name: Deploy Backend
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "backend/**"
+      - ".github/workflows/deploy-backend.yml"
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up SSH
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "${{ secrets.AVITSENA_DEPLOY_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H "${{ secrets.AVITSENA_SERVER_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Sync backend code to server
+        run: |
+          rsync -az --delete \
+            --exclude='venv' \
+            --exclude='__pycache__' \
+            --exclude='**/__pycache__' \
+            --exclude='media' \
+            --exclude='staticfiles' \
+            --exclude='.env' \
+            --exclude='db.sqlite3' \
+            -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no" \
+            backend/ "${{ secrets.AVITSENA_SERVER_USER }}@${{ secrets.AVITSENA_SERVER_HOST }}:${{ secrets.AVITSENA_BACKEND_PATH }}/"
+
+      - name: Install deps, migrate, restart service
+        run: |
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
+            "${{ secrets.AVITSENA_SERVER_USER }}@${{ secrets.AVITSENA_SERVER_HOST }}" '
+            set -e
+            cd "${{ secrets.AVITSENA_BACKEND_PATH }}"
+            [ -d venv ] || python3 -m venv venv
+            source venv/bin/activate
+            pip install --no-cache-dir -r requirements/base.txt
+            python manage.py migrate --noinput
+            python manage.py collectstatic --noinput
+            systemctl restart avitsena-backend
+          '

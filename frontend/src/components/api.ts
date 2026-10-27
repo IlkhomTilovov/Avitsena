@@ -11,10 +11,14 @@ const ideal = "https://api.ideal.one-med.info"; /// 8085
 const estelife = "https://api.estelife.one-med.info"; /// 8086
 const local = "http://127.0.0.1:8000"; // lokal backend (titan-renesans DB)
 
+// Build vaqtida VITE_BASE_API orqali beriladi (masalan production serverga deploy qilishda),
+// bo'lmasa lokal backendga tushadi.
+const baseURL = import.meta.env.VITE_BASE_API || local;
+
 console.log(baby, bm, titan, nero, murtazayev, ideal);
 
 const api = axios.create({
-  baseURL: local,
+  baseURL,
 });
 
 // Har bir so‘rovga access token qo‘shish

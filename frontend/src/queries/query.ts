@@ -21,7 +21,9 @@ const ideal = "https://api.ideal.one-med.info";
 const estelife = "https://api.estelife.one-med.info"; /// 8086
 const local = "http://127.0.0.1:8000"; // lokal backend (titan-renesans DB)
 
-export const baseApi = local;
+// Build vaqtida VITE_BASE_API orqali beriladi (masalan production serverga deploy qilishda),
+// bo'lmasa lokal backendga tushadi.
+export const baseApi = import.meta.env.VITE_BASE_API || local;
 
 console.log(baby, bm, titan, nero, murtazayev, ideal);
 

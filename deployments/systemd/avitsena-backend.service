@@ -1,0 +1,14 @@
+[Unit]
+Description=Avitsena Django backend (gunicorn)
+After=network.target postgresql.service
+
+[Service]
+User=root
+WorkingDirectory=/opt/avitsena/backend
+EnvironmentFile=/opt/avitsena/backend/.env
+ExecStart=/opt/avitsena/backend/venv/bin/gunicorn core.wsgi:application --bind 127.0.0.1:8000 --workers 3 --timeout 120
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
