@@ -25,7 +25,7 @@ const local = "http://127.0.0.1:8000"; // lokal backend (titan-renesans DB)
 // bo'lmasa lokal backendga tushadi.
 export const baseApi = import.meta.env.VITE_BASE_API || local;
 
-console.log(baby, bm, titan, nero, murtazayev, ideal);
+console.log(baby, bm, titan, nero, murtazayev, ideal, estelife);
 
 type ServiceItem = {
   id: string;
