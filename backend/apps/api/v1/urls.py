@@ -9,6 +9,7 @@ from apps.api.v1.views import (
     ServiceListCreateView,
     ServiceDetailView,
     ServiceCategoryDetailView,
+    ServiceStatsView,
 
     #stats
     ClinicStatsView,
@@ -48,6 +49,7 @@ urlpatterns = [
 
     # servires, service categories
     path('services', ServiceListCreateView.as_view(), name='service_list_create'),
+    path('services/stats', ServiceStatsView.as_view(), name='service_stats'),
     path('services/<uuid:id>', ServiceDetailView.as_view(), name='service_detail'),
     path('service-categories', ServiceCategoryListCreateView.as_view(), name='service_category_list_create'),
     path('service-categories/<uuid:id>', ServiceCategoryDetailView.as_view(), name='service_category_detail'),

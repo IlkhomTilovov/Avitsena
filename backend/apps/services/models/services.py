@@ -58,6 +58,11 @@ class Service(models.Model):
     
     price = models.FloatField()
 
+    duration_minutes = models.PositiveIntegerField(
+        blank=True,
+        null=True
+    )
+
     is_active = models.BooleanField(default=True)
 
     class Meta:

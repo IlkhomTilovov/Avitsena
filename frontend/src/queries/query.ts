@@ -284,6 +284,7 @@ type CategoryResponse = {
 type ServiceRequest = {
   name: string;
   price: number;
+  duration_minutes?: number | null;
 };
 
 type CreateCategoryServiceRequest = {
@@ -708,8 +709,14 @@ export const OneMedAdmin = {
 
   editService: async (
     id: string,
-    obj: { name: string; category: string; price: number }
-  ): Promise<{ id: string; name: string; category: string; price: number }> => {
+    obj: Partial<{
+      name: string;
+      category: string;
+      price: number;
+      duration_minutes: number | null;
+      is_active: boolean;
+    }>
+  ): Promise<any> => {
     const response = await api.patch(`${baseApi}/v1/services/${id}`, obj, {
       headers: {
         "Content-Type": "application/json",
@@ -741,6 +748,15 @@ export const OneMedAdmin = {
   deleteCategory: async (id: string): Promise<{ message: string }> => {
     const response = await api.delete(`${baseApi}/v1/service-categories/${id}`);
     return response.data || { message: "Deleted successfully" };
+  },
+
+  getServicesStats: async (): Promise<any> => {
+    const response = await api.get(`${baseApi}/v1/services/stats`, {
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+    return response.data;
   },
 
   getUserProfile: async (): Promise<any> => {

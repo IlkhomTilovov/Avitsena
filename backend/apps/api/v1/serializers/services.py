@@ -5,7 +5,15 @@ from apps.services.models import (
 )
 
 
+class ServiceDoctorSerializer(serializers.Serializer):
+
+    id = serializers.UUIDField()
+    fio = serializers.CharField()
+
+
 class ServiceSerializer(serializers.ModelSerializer):
+
+    doctors = serializers.SerializerMethodField()
 
     class Meta:
 
@@ -13,14 +21,25 @@ class ServiceSerializer(serializers.ModelSerializer):
         fields = (
             'id',
             'name',
-            'price'
+            'price',
+            'duration_minutes',
+            'is_active',
+            'doctors'
         )
+
+    def get_doctors(self, instance) -> ServiceDoctorSerializer(many=True):
+
+        return [
+            {'id': doctor.user_id, 'fio': doctor.user.fio}
+            for doctor in instance.doctor_set.select_related('user').all()
+        ]
 
 
 class ServiceItemSerializer(serializers.Serializer):
 
     name = serializers.CharField()
     price = serializers.FloatField()
+    duration_minutes = serializers.IntegerField(required=False, allow_null=True)
 
 
 class ServiceCategoryDetailSerializer(serializers.ModelSerializer):
@@ -30,14 +49,61 @@ class ServiceCategoryDetailSerializer(serializers.ModelSerializer):
         read_only=True
     )
 
+    service_count = serializers.SerializerMethodField()
+
+    active_count = serializers.SerializerMethodField()
+
+    doctor_count = serializers.SerializerMethodField()
+
+    price_min = serializers.SerializerMethodField()
+
+    price_max = serializers.SerializerMethodField()
+
     class Meta:
 
         model = ServiceCategory
         fields = (
             'id',
             'name',
-            'services'
+            'services',
+            'service_count',
+            'active_count',
+            'doctor_count',
+            'price_min',
+            'price_max'
         )
+
+    def get_service_count(self, instance) -> int:
+
+        return len(instance.services.all())
+
+    def get_active_count(self, instance) -> int:
+
+        return len([s for s in instance.services.all() if s.is_active])
+
+    def get_doctor_count(self, instance) -> int:
+
+        doctor_ids = set()
+
+        for service in instance.services.all():
+
+            for doctor in service.doctor_set.all():
+
+                doctor_ids.add(doctor.user_id)
+
+        return len(doctor_ids)
+
+    def get_price_min(self, instance) -> float | None:
+
+        prices = [s.price for s in instance.services.all()]
+
+        return min(prices) if prices else None
+
+    def get_price_max(self, instance) -> float | None:
+
+        prices = [s.price for s in instance.services.all()]
+
+        return max(prices) if prices else None
 
 
 class ServiceDetailSerializer(serializers.ModelSerializer):
@@ -49,7 +115,9 @@ class ServiceDetailSerializer(serializers.ModelSerializer):
             'id',
             'name',
             'category',
-            'price'
+            'price',
+            'duration_minutes',
+            'is_active'
         )
         read_only_fields = (
             'id',

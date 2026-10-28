@@ -1,370 +1,187 @@
-import { TbCategoryPlus } from "react-icons/tb";
-import { CloseOutlined, LoadingOutlined } from "@ant-design/icons";
+import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import {
   Button,
-  Card,
   Form,
-  GetProp,
   Input,
+  Modal,
   notification,
+  Popconfirm,
   Spin,
-  TreeSelect,
-  TreeSelectProps,
+  Switch,
 } from "antd";
-import { Link } from "react-router-dom";
+import { LoadingOutlined } from "@ant-design/icons";
 import { useMutation, useQuery, useQueryClient } from "react-query";
-import { GetOneCategoryResponse, OneMedAdmin } from "../queries/query";
-import { useEffect, useState } from "react";
-import { BiSolidEditAlt } from "react-icons/bi";
-import { IoCheckmarkDoneSharp } from "react-icons/io5";
-import { IoTrashOutline } from "react-icons/io5";
+import { OneMedAdmin } from "../queries/query";
+import { FiDownload, FiPlus, FiSearch, FiEdit2, FiTrash2 } from "react-icons/fi";
+import {
+  TbCategoryPlus,
+  TbStethoscope,
+  TbHeartbeat,
+  TbBabyCarriage,
+  TbBrain,
+  TbWaveSine,
+  TbFlask2,
+  TbDental,
+  TbSparkles,
+} from "react-icons/tb";
 
-type ServiceType = {
+type ServiceDoctor = {
+  id: string;
+  fio: string;
+};
+
+type ServiceItem = {
   id: string;
   name: string;
   price: number;
+  duration_minutes: number | null;
+  is_active: boolean;
+  doctors: ServiceDoctor[];
 };
 
-type DataCategoryType = {
+type CategoryListItem = {
   id: string;
   name: string;
-  services: ServiceType[];
+  services: ServiceItem[];
 };
 
-type CategoryResponse = {
-  success: boolean;
-  data: DataCategoryType;
-};
-type CategoryRequest = {
-  name: string;
-};
-
-type Service = {
+type CategoryDetail = {
   id: string;
   name: string;
-  price: number;
+  services: ServiceItem[];
+  service_count: number;
+  active_count: number;
+  doctor_count: number;
+  price_min: number | null;
+  price_max: number | null;
 };
 
-type CategoryData = {
-  id: string;
-  name: string;
-  services: Service[];
+type ServicesStats = {
+  total_categories: number;
+  total_services: number;
+  average_price: number;
+  most_popular_service: string | null;
 };
 
-type ServicesResponse = {
-  success: boolean;
-  data: CategoryData;
-};
+const CATEGORY_COLORS = [
+  { bg: "#F3E8FF", text: "#9333EA" },
+  { bg: "#FCE7F3", text: "#DB2777" },
+  { bg: "#DBEAFE", text: "#2563EB" },
+  { bg: "#DCFCE7", text: "#16A34A" },
+  { bg: "#FEF3C7", text: "#D97706" },
+  { bg: "#E0F2FE", text: "#0891B2" },
+];
 
-type ServiceRequest = {
-  name: string;
-  price: number;
-};
+function getCategoryStyle(id: string) {
+  let hash = 0;
+  for (let i = 0; i < id.length; i++) hash = id.charCodeAt(i) + ((hash << 5) - hash);
+  return CATEGORY_COLORS[Math.abs(hash) % CATEGORY_COLORS.length];
+}
 
-type CreateCategoryServiceRequest = {
-  category: string; // category id
-  services: ServiceRequest[];
-};
+function getCategoryIcon(name: string) {
+  const n = name.toLowerCase();
+  if (n.includes("gin")) return TbStethoscope;
+  if (n.includes("kardio")) return TbHeartbeat;
+  if (n.includes("pediatr") || n.includes("bola")) return TbBabyCarriage;
+  if (n.includes("nevro") || n.includes("невро")) return TbBrain;
+  if (n.includes("uzi") || n.includes("узи") || n.includes("diagnost"))
+    return TbWaveSine;
+  if (n.includes("laborator") || n.includes("лаборатор")) return TbFlask2;
+  if (n.includes("stomatolog") || n.includes("стоматолог")) return TbDental;
+  return TbSparkles;
+}
 
-type DefaultOptionType = GetProp<TreeSelectProps, "treeData">[number];
+function getInitials(fio: string) {
+  const parts = fio.trim().split(/\s+/);
+  return `${parts[0]?.[0] || ""}${parts[1]?.[0] || ""}`.toUpperCase();
+}
 
 export default function Services() {
-  const [form] = Form.useForm();
-  const [categoryForm] = Form.useForm();
-  const [checkAddCategoryName, setCheckCategoryName] =
-    useState<DataCategoryType>();
-  const [closeCat, setCloseCat] = useState(true);
-  const [editingIndex, setEditingIndex] = useState<number | null>(null);
-  const [successIndex, setSuccessIndex] = useState<number | null>(null);
-  const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(true);
-  const [value, setValue] = useState<string | undefined>();
-  const [treeData, setTreeData] = useState<Omit<DefaultOptionType, "label">[]>(
-    []
-  );
-  const [deleteBool, setDeleteBool] = useState(false);
-
   type NotificationType = "success" | "info" | "warning" | "error";
-
   const [api, contextHolder] = notification.useNotification();
-
   const openNotificationWithIcon = (
     type: NotificationType,
     message: string,
     desc: string
   ) => {
-    api[type]({
-      message: message,
-      description: desc,
-    });
+    api[type]({ message, description: desc });
   };
-
-  const per_page = 14;
 
   const queryClient = useQueryClient();
-  const { mutate: categoryNameMutate, isLoading: categoryNameLoading } =
-    useMutation<CategoryResponse, Error, CategoryRequest>(
-      (obj) => OneMedAdmin.addCategory(obj),
-      {
-        onSuccess: (data) => {
-          queryClient.invalidateQueries(["getCategorylist"]);
-          form.setFieldsValue({
-            items: [...(form.getFieldValue("items") || []), { list: [] }],
-          });
-          setCheckCategoryName(data.data);
-          setDeleteBool(false);
-        },
-        onError: () => {
-          openNotificationWithIcon(
-            "error",
-            "Xatolik yuz berdi!",
-            "Bu kategoriya bazada bo'lishi mumkin iltimos qaytadan urinib ko'ring!"
-          );
-        },
-      }
-    );
+  const [search, setSearch] = useState("");
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(
+    null
+  );
+  const [newCategoryName, setNewCategoryName] = useState("");
 
-  const addCategoryName = (value: { name: string }) => {
-    categoryNameMutate(value);
-  };
-
-  // Servislarni qo'shib kategoriyaga bog'lab qo'yish
-  const { mutate: addServicesMutate, isLoading: addServicesLoading } =
-    useMutation<ServicesResponse, Error, CreateCategoryServiceRequest>(
-      (obj) => OneMedAdmin.addServices(obj),
-      {
-        onSuccess: () => {
-          queryClient.invalidateQueries(["addServices"]);
-          refetch();
-
-          // 🔥 Qayta bosh holatga qaytarish
-
-          if (value) {
-            categoryForm.resetFields();
-            getOneCategoryRefetch();
-            window.location.reload();
-          } else {
-            setCheckCategoryName(undefined);
-            form.resetFields();
-            setCloseCat(true);
-            openNotificationWithIcon(
-              "success",
-              "Muvaffaqiyatli",
-              "Kategoriya qo'shish muvaffaqiyatli amalga oshirildi!"
-            );
-          }
-        },
-        onError: () => {
-          openNotificationWithIcon(
-            "error",
-            "Xatolik yuz berdi!",
-            "Iltimos qaytadan urinib ko'ring!"
-          );
-        },
-      }
-    );
-
-  // Safe handler — Form'dan olingan values'ni to'g'rilaymiz va validate qilamiz
-  const addCategoryWithServices = (values: any) => {
-    const items = values?.items;
-    if (!items || items.length === 0) {
-      console.warn("Hech qanday item topilmadi");
-      return;
-    }
-
-    const servicesRaw = items[0]?.list ?? [];
-
-    if (!servicesRaw || servicesRaw.length === 0) {
-      console.warn("Hech qanday servis topilmadi");
-      return;
-    }
-
-    if (!checkAddCategoryName?.id) {
-      console.warn("Category tanlanmagan (checkAddCategoryName.id yo'q)");
-      return;
-    }
-
-    const servicesPayload: ServiceRequest[] = servicesRaw.map((s: any) => ({
-      name: String(s.name ?? ""),
-      price: Number(s.price ?? 0),
-    }));
-
-    const servicesFiltered = servicesPayload.filter(
-      (s) => s.name.trim().length > 0 && !Number.isNaN(s.price)
-    );
-
-    if (servicesFiltered.length === 0) {
-      console.warn("Yaroqsiz servis ma'lumotlari");
-      return;
-    }
-
-    const payload: CreateCategoryServiceRequest = {
-      category: checkAddCategoryName.id,
-      services: servicesFiltered,
-    };
-
-    addServicesMutate(payload);
-  };
-
-  // Categoriyalar Listini olib kelob olish
-  const {
-    data: getCategoryList,
-    isLoading: getCatLoading,
-    isFetching,
-    refetch,
-  } = useQuery({
-    queryKey: ["getCategorylist", page, per_page],
-    queryFn: () => OneMedAdmin.getCategorylist(page, per_page),
-    keepPreviousData: true,
-    staleTime: Infinity,
-    cacheTime: Infinity,
+  const { data: statsData } = useQuery<{ success: boolean; data: ServicesStats }>({
+    queryKey: ["servicesStats"],
+    queryFn: () => OneMedAdmin.getServicesStats(),
   });
 
-  // Bitta kategoriya tanlanganda ushani malumotlarini olib kelish
-  const {
-    data: getOneCategory,
-    isLoading: getOneCategoryLoading,
-    refetch: getOneCategoryRefetch,
-  } = useQuery<GetOneCategoryResponse>({
-    queryKey: ["getCategory", value],
-    queryFn: () => OneMedAdmin.getOneCategory(value as string),
-    enabled: !!value,
+  const { data: categoryListData, isLoading: categoriesLoading } = useQuery<{
+    data: CategoryListItem[];
+  }>({
+    queryKey: ["getCategorylist", 1, 100],
+    queryFn: () => OneMedAdmin.getCategorylist(1, 100),
     keepPreviousData: true,
   });
 
-  useEffect(() => {
-    if (getOneCategory?.data) {
-      setCheckCategoryName(getOneCategory.data);
+  const categories = categoryListData?.data || [];
 
-      form.setFieldsValue({
-        items: [
-          {
-            list: getOneCategory.data.services.map((srv) => ({
-              name: srv.name,
-              price: srv.price,
-            })),
-          },
-        ],
-      });
-
-      setCloseCat(true);
-    }
-  }, [getOneCategory, form]);
-
-  // Servisni o'zini edit qilish backendga so'rov yuboradigan joyi
-  const { mutate: editServiceMutate } = useMutation<
-    { id: string; name: string; category: string; price: number },
-    Error,
-    {
-      id: string;
-      obj: { name: string; category: string; price: number };
-      index: number;
-    }
-  >(({ id, obj }) => OneMedAdmin.editService(id, obj), {
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries(["getCategory"]);
-      setSuccessIndex(variables.index);
-      setEditingIndex(null);
-
-      setTimeout(() => {
-        setSuccessIndex(null);
-      }, 2500);
-    },
-  });
-
-  // Servislarni delete qilish
-  const [deletingId, setDeletingId] = useState<string | null>(null);
-
-  const { mutate: deleteServiceMutate } = useMutation(
-    (id: string) => OneMedAdmin.deleteService(id),
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries(["getCategory"]);
-        refetch();
-        setDeletingId(null);
-      },
-      onError: () => {
-        setDeletingId(null);
-      },
-    }
+  const filteredCategories = categories.filter((c) =>
+    c.name.toLowerCase().includes(search.toLowerCase())
   );
 
-  const handleDelete = (id: string) => {
-    setDeletingId(id);
-    deleteServiceMutate(id);
-  };
-
-  const handleEditServise = (
-    selectIndex: number,
-    obj: { name: string; price: number }
-  ) => {
-    const serviceId = checkAddCategoryName?.services[selectIndex]?.id;
-    const categoryId = checkAddCategoryName?.id;
-
-    if (serviceId && categoryId) {
-      const updateObj = {
-        name: obj.name,
-        category: categoryId,
-        price: obj.price,
-      };
-
-      setEditingIndex(selectIndex);
-      editServiceMutate({ id: serviceId, obj: updateObj, index: selectIndex });
-    }
-  };
-
   useEffect(() => {
-    if (getCategoryList?.data) {
-      const formatted = getCategoryList.data.flatMap(
-        (cat: DataCategoryType) => {
-          const parentNode = {
-            id: cat.id,
-            pId: 0,
-            value: cat.id,
-            key: cat.id,
-            title: cat.name,
-            selectable: true,
-          };
-
-          const serviceNodes = cat.services.map((srv) => ({
-            id: srv.id,
-            pId: cat.id,
-            key: cat.id,
-            value: srv.id,
-            title: `${srv.name} - ${srv.price} so'm`,
-            selectable: false,
-          }));
-
-          return [parentNode, ...serviceNodes];
-        }
-      );
-
-      setTreeData((prev) => [...prev, ...formatted]);
-
-      if (getCategoryList.data.length < per_page) {
-        setHasMore(false);
-      }
+    if (!selectedCategoryId && categories.length > 0) {
+      setSelectedCategoryId(categories[0].id);
     }
-  }, [getCategoryList]);
+  }, [categories, selectedCategoryId]);
 
-  const handlePopupScroll: TreeSelectProps["onPopupScroll"] = (e) => {
-    const target = e.target as HTMLDivElement;
+  const {
+    data: categoryDetailData,
+    isLoading: categoryDetailLoading,
+  } = useQuery<{ data: CategoryDetail }>({
+    queryKey: ["getCategory", selectedCategoryId],
+    queryFn: () => OneMedAdmin.getOneCategory(selectedCategoryId as string),
+    enabled: !!selectedCategoryId,
+  });
 
-    if (
-      hasMore &&
-      !isFetching &&
-      target.scrollTop + target.offsetHeight >= target.scrollHeight - 5
-    ) {
-      setPage((prev) => prev + 1);
-    }
+  const categoryDetail = categoryDetailData?.data;
+
+  const refreshAll = () => {
+    queryClient.invalidateQueries(["getCategorylist"]);
+    queryClient.invalidateQueries(["getCategory", selectedCategoryId]);
+    queryClient.invalidateQueries(["servicesStats"]);
   };
 
-  const onChangeSelect = (newValue: string) => {
-    setValue(newValue);
-  };
+  // Yangi kategoriya qo'shish
+  const { mutate: addCategoryMutate, isLoading: addCategoryLoading } =
+    useMutation((obj: { name: string }) => OneMedAdmin.addCategory(obj), {
+      onSuccess: (data: any) => {
+        setNewCategoryName("");
+        refreshAll();
+        setSelectedCategoryId(data?.data?.id || null);
+        openNotificationWithIcon(
+          "success",
+          "Kategoriya qo'shildi",
+          "Yangi kategoriya muvaffaqiyatli yaratildi!"
+        );
+      },
+      onError: () => {
+        openNotificationWithIcon(
+          "error",
+          "Xatolik yuz berdi",
+          "Bu kategoriya allaqachon mavjud bo'lishi mumkin."
+        );
+      },
+    });
 
-  const [isCategoryEditing, setIsCategoryEditing] = useState(false);
-  const [isCategoryEditingChange, setIsCategoryEditingChange] = useState("");
+  // Kategoriya nomini tahrirlash
+  const [categoryEditMode, setCategoryEditMode] = useState(false);
+  const [categoryEditName, setCategoryEditName] = useState("");
 
   const { mutate: updateCategoryMutate, isLoading: updateCategoryLoading } =
     useMutation(
@@ -372,36 +189,180 @@ export default function Services() {
         OneMedAdmin.updateCategory(data.id, { name: data.name }),
       {
         onSuccess: () => {
-          queryClient.invalidateQueries(["getCategory"]);
-          setIsCategoryEditing(false);
-          refetch();
-        },
-        onError: (err) => {
-          console.error("Update category error:", err);
+          setCategoryEditMode(false);
+          refreshAll();
         },
       }
     );
 
-  const handleCategoryEdit = () => {
-    form.setFieldsValue({
-      categoryName: checkAddCategoryName?.name,
-    });
-    setIsCategoryEditing(true);
-  };
+  // Kategoriyani o'chirish
+  const { mutate: deleteCategoryMutate } = useMutation(
+    (id: string) => OneMedAdmin.deleteCategory(id),
+    {
+      onSuccess: () => {
+        setSelectedCategoryId(null);
+        refreshAll();
+        openNotificationWithIcon(
+          "success",
+          "O'chirildi",
+          "Kategoriya muvaffaqiyatli o'chirildi!"
+        );
+      },
+      onError: () => {
+        openNotificationWithIcon(
+          "error",
+          "Xatolik yuz berdi",
+          "Kategoriyani o'chirib bo'lmadi, unda xizmatlar mavjud bo'lishi mumkin."
+        );
+      },
+    }
+  );
 
-  const handleSaveCategory = () => {
-    if (checkAddCategoryName?.id && isCategoryEditingChange) {
-      updateCategoryMutate({
-        id: checkAddCategoryName.id,
-        name: isCategoryEditingChange,
+  // Yangi xizmat qo'shish
+  const [addServiceModalOpen, setAddServiceModalOpen] = useState(false);
+  const [addServiceForm] = Form.useForm();
+
+  const { mutate: addServicesMutate, isLoading: addServicesLoading } =
+    useMutation(
+      (obj: {
+        category: string;
+        services: { name: string; price: number; duration_minutes?: number | null }[];
+      }) => OneMedAdmin.addServices(obj),
+      {
+        onSuccess: () => {
+          addServiceForm.resetFields();
+          setAddServiceModalOpen(false);
+          refreshAll();
+          openNotificationWithIcon(
+            "success",
+            "Xizmat qo'shildi",
+            "Yangi xizmat muvaffaqiyatli qo'shildi!"
+          );
+        },
+        onError: () => {
+          openNotificationWithIcon(
+            "error",
+            "Xatolik yuz berdi",
+            "Bu nomli xizmat allaqachon mavjud bo'lishi mumkin."
+          );
+        },
+      }
+    );
+
+  // Xizmatni tahrirlash
+  const [editingService, setEditingService] = useState<ServiceItem | null>(null);
+  const [editServiceForm] = Form.useForm();
+
+  useEffect(() => {
+    if (editingService) {
+      editServiceForm.setFieldsValue({
+        name: editingService.name,
+        price: editingService.price,
+        duration_minutes: editingService.duration_minutes,
       });
     }
-  };
-  const handleChangeValue = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setIsCategoryEditingChange(e.target.value);
+  }, [editingService]);
+
+  const { mutate: editServiceMutate, isLoading: editServiceLoading } =
+    useMutation(
+      (data: { id: string; obj: any }) =>
+        OneMedAdmin.editService(data.id, data.obj),
+      {
+        onSuccess: () => {
+          setEditingService(null);
+          refreshAll();
+        },
+        onError: () => {
+          openNotificationWithIcon(
+            "error",
+            "Xatolik yuz berdi",
+            "Xizmatni yangilab bo'lmadi."
+          );
+        },
+      }
+    );
+
+  // Xizmatni faol/nofaol qilish
+  const toggleServiceActive = (service: ServiceItem) => {
+    editServiceMutate({
+      id: service.id,
+      obj: { is_active: !service.is_active },
+    });
   };
 
-  const [newServices, setNewServices] = useState(false);
+  // Xizmatni o'chirish
+  const [deletingServiceId, setDeletingServiceId] = useState<string | null>(
+    null
+  );
+  const { mutate: deleteServiceMutate } = useMutation(
+    (id: string) => OneMedAdmin.deleteService(id),
+    {
+      onSuccess: () => {
+        setDeletingServiceId(null);
+        refreshAll();
+      },
+      onError: () => {
+        setDeletingServiceId(null);
+      },
+    }
+  );
+
+  const handleDeleteService = (id: string) => {
+    setDeletingServiceId(id);
+    deleteServiceMutate(id);
+  };
+
+  // Narxlar ro'yxatini PDF (brauzer chop etish) ko'rinishida eksport qilish
+  const handleExportPdf = () => {
+    const win = window.open("", "_blank");
+    if (!win) return;
+
+    const rows = categories
+      .map(
+        (cat) => `
+        <h3>${cat.name}</h3>
+        <table>
+          <thead>
+            <tr><th>Xizmat nomi</th><th>Narx</th></tr>
+          </thead>
+          <tbody>
+            ${cat.services
+              .map(
+                (s) =>
+                  `<tr><td>${s.name}</td><td>${s.price.toLocaleString()} so'm</td></tr>`
+              )
+              .join("")}
+          </tbody>
+        </table>
+      `
+      )
+      .join("");
+
+    win.document.write(`
+      <html>
+        <head>
+          <title>Narxlar ro'yxati</title>
+          <style>
+            body { font-family: Arial, sans-serif; padding: 24px; }
+            h1 { font-size: 20px; }
+            h3 { margin-top: 24px; margin-bottom: 8px; }
+            table { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
+            th, td { border: 1px solid #ddd; padding: 6px 10px; text-align: left; font-size: 13px; }
+            th { background: #F9FAFB; }
+          </style>
+        </head>
+        <body>
+          <h1>Xizmatlar narxlar ro'yxati</h1>
+          ${rows}
+        </body>
+      </html>
+    `);
+    win.document.close();
+    win.focus();
+    win.print();
+  };
+
+  const stats = statsData?.data;
 
   return (
     <div className="pr-[10px] md:pr-auto">
@@ -416,487 +377,537 @@ export default function Services() {
         <span className="font-[500] text-[#44525C]">Xizmatlar</span>
       </div>
 
-      <div className="mt-3">
-        <h1 className="md:text-[22px] text-[18px] font-[600]">
-          Xizmatlar va kategoriyalar
-        </h1>
-        <p className="text-[#8F99A3] text-[14px] md:text-[16px]">
-          Klinika xizmat kategoriyalari va narxlarini boshqarish
-        </p>
+      {/* Header */}
+      <div className="flex md:flex-row flex-col md:items-center items-start justify-between gap-3 mt-3 mb-4">
+        <div>
+          <h1 className="md:text-[22px] text-[18px] font-[600]">
+            Xizmatlar va kategoriyalar
+          </h1>
+          <p className="text-[#8F99A3] text-[14px] md:text-[16px]">
+            Klinika xizmat kategoriyalari va narxlarini boshqarish
+          </p>
+        </div>
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            onClick={handleExportPdf}
+            className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-[10px] border border-[#E0E6EB] text-[13px] font-[500] text-[#44525C] hover:bg-[#F9FAFB] transition-colors cursor-pointer"
+          >
+            <FiDownload /> Narxlar ro'yxati (PDF)
+          </button>
+          <button
+            onClick={() =>
+              document.getElementById("new-category-input")?.focus()
+            }
+            className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-[10px] border border-[#E0E6EB] text-[13px] font-[500] text-[#44525C] hover:bg-[#F9FAFB] transition-colors cursor-pointer"
+          >
+            <TbCategoryPlus /> Kategoriya qo'shish
+          </button>
+          <button
+            onClick={() => {
+              if (!selectedCategoryId) return;
+              setAddServiceModalOpen(true);
+            }}
+            disabled={!selectedCategoryId}
+            className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-[10px] bg-[#0D9488] hover:bg-[#0C8377] transition-colors text-white text-[13px] font-[500] cursor-pointer disabled:opacity-50"
+          >
+            <FiPlus /> Xizmat qo'shish
+          </button>
+        </div>
       </div>
 
-      <div className="border md:w-full w-full border-[#e3e3e3] rounded-[10px] px-6 py-4 mb-3 mt-6">
-        <div className="flex items-center gap-3">
-          <TbCategoryPlus className="text-[20px] text-[#0D9488] mb-1" />
-          <h2 className="md:text-[18px] text-[16px] font-[500]">
-            Kategoriyalar qo'shish
-          </h2>
+      {/* Stat cards */}
+      <div className="grid md:grid-cols-4 grid-cols-2 gap-3 mb-4">
+        <div className="border bg-[#fff] border-[#E8E8E8] rounded-[10px] px-4 py-3">
+          <p className="text-[11px] text-[#8F99A3]">Kategoriyalar</p>
+          <p className="text-[18px] font-[700]">
+            {stats?.total_categories ?? "—"}
+          </p>
         </div>
-        <div>
-          <div className="grid w-full grid-cols-12 mt-4 gap-4">
-            <div className="md:!col-span-4 !col-span-12 border rounded-xl border-[#F0F0F0] px-4 py-2">
-              <h3 className="font-[500] mb-3 text-[14px] mt-3">
-                Mavjud Kategoriyalarni tanlash
-              </h3>
+        <div className="border bg-[#fff] border-[#E8E8E8] rounded-[10px] px-4 py-3">
+          <p className="text-[11px] text-[#8F99A3]">Jami xizmatlar</p>
+          <p className="text-[18px] font-[700]">
+            {stats?.total_services ?? "—"}
+          </p>
+        </div>
+        <div className="border bg-[#fff] border-[#E8E8E8] rounded-[10px] px-4 py-3">
+          <p className="text-[11px] text-[#8F99A3]">O'rtacha narx</p>
+          <p className="text-[16px] font-[700]">
+            {stats ? Math.round(stats.average_price).toLocaleString() : "—"}{" "}
+            so'm
+          </p>
+        </div>
+        <div className="border bg-[#fff] border-[#E8E8E8] rounded-[10px] px-4 py-3">
+          <p className="text-[11px] text-[#8F99A3]">Eng ommabop</p>
+          <p className="text-[13px] font-[700] truncate">
+            {stats?.most_popular_service || "Hali ma'lumot yo'q"}
+          </p>
+        </div>
+      </div>
 
-              <div>
-                <TreeSelect
-                  treeDataSimpleMode
-                  style={{ width: "100%" }}
-                  value={value}
-                  placeholder="Please select"
-                  onChange={onChangeSelect}
-                  treeData={treeData}
-                  loading={getCatLoading && page === 1}
-                  onPopupScroll={handlePopupScroll}
-                  styles={{
-                    popup: {
-                      root: { maxHeight: 300, overflow: "auto" },
-                    },
-                  }}
-                  popupRender={(menu) => (
-                    <>
-                      {menu}
-                      {isFetching && hasMore && (
-                        <div style={{ textAlign: "center", padding: 8 }}>
-                          <Spin
-                            indicator={<LoadingOutlined spin />}
-                            size="small"
-                          />
-                        </div>
-                      )}
-                    </>
-                  )}
-                />
-              </div>
+      <div className="grid grid-cols-12 gap-3">
+        {/* LEFT: Categories list */}
+        <div className="md:col-span-4 col-span-12">
+          <div className="border bg-[#fff] border-[#E8E8E8] rounded-[10px] p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <TbCategoryPlus className="text-[#0D9488] text-[18px]" />
+              <h3 className="font-[600] text-[15px]">
+                Kategoriyalar {categories.length}
+              </h3>
             </div>
 
-            <div className="md:!col-span-8 !col-span-12  relative">
-              {getOneCategoryLoading ? (
-                <div className="absolute top-0 left-0 w-full flex justify-center items-center h-full z-[9999]">
-                  <Spin indicator={<LoadingOutlined spin />} />
-                </div>
-              ) : checkAddCategoryName ? (
-                ""
-              ) : (
-                <div className=" border rounded-xl border-[#F0F0F0] px-4 py-2">
-                  <h3 className="font-[500] mb-3 text-[14px] mt-3">
-                    Yangi kategoriya qo'shish
-                  </h3>
+            <div className="relative mb-3">
+              <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-[#A9B2B8]" />
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Kategoriya qidirish..."
+                className="w-full h-[38px] pl-9 rounded-[8px] border border-[#E0E6EB] outline-none text-[13px] focus:border-[#0D9488]"
+              />
+            </div>
 
-                  <Form layout="vertical" onFinish={addCategoryName}>
-                    <Form.Item name="name" label="Kategoriya nomi">
-                      <Input />
-                    </Form.Item>
+            {categoriesLoading ? (
+              <div className="flex justify-center py-6">
+                <Spin indicator={<LoadingOutlined spin />} />
+              </div>
+            ) : (
+              <div className="flex flex-col gap-1 max-h-[480px] overflow-y-auto">
+                {filteredCategories.map((cat) => {
+                  const style = getCategoryStyle(cat.id);
+                  const Icon = getCategoryIcon(cat.name);
+                  const active = cat.id === selectedCategoryId;
 
-                    <Form.Item>
-                      <button className="!bg-[#0D9488] hover:shadow-md transition-all duration-150 hover:!bg-[#0C8377] !h-[40px] !text-white cursor-pointer w-full rounded-md">
-                        {categoryNameLoading ? (
-                          <Spin
-                            className="!text-white"
-                            indicator={<LoadingOutlined spin />}
-                          />
-                        ) : (
-                          "+ Yangi kategoriya qo'shish"
-                        )}
-                      </button>
-                    </Form.Item>
-                  </Form>
-                </div>
-              )}
-
-              {value ? (
-                <div className="border rounded-xl border-[#F0F0F0] px-4 py-2">
-                  <Form
-                    form={form}
-                    layout="inline"
-                    onFinish={(values) => {
-                      if (checkAddCategoryName?.id) {
-                        updateCategoryMutate({
-                          id: checkAddCategoryName.id,
-                          name: values.categoryName,
-                        });
-                      }
-                    }}
-                    style={{ marginBottom: "20px" }}
-                    className="flex justify-between"
-                  >
-                    <Form.Item name="categoryName">
-                      {!isCategoryEditing ? (
-                        <div>
-                          <h2 className=" font-[500]">
-                            {checkAddCategoryName?.name}
-                          </h2>
-                        </div>
-                      ) : (
-                        <Input
-                          placeholder="Kategoriya nomi"
-                          disabled={!isCategoryEditing}
-                          onChange={handleChangeValue}
-                        />
-                      )}
-                    </Form.Item>
-
-                    <div className="flex gap-3">
-                      {isCategoryEditing ? (
-                        <Button
-                          type="primary"
-                          htmlType="button"
-                          onClick={handleSaveCategory}
-                          loading={updateCategoryLoading}
-                          className="hover:shadow-md transition-all duration-150"
-                        >
-                          Saqlash
-                        </Button>
-                      ) : (
-                        <Button
-                          onClick={handleCategoryEdit}
-                          icon={<BiSolidEditAlt />}
-                          className="hover:shadow-md transition-all duration-150"
-                        >
-                          Tahrirlash
-                        </Button>
-                      )}
-                    </div>
-                  </Form>
-                  <Form
-                    labelCol={{ span: 6 }}
-                    wrapperCol={{ span: 18 }}
-                    form={form}
-                    name="dynamic_form_complex"
-                    autoComplete="off"
-                    className="!w-full"
-                  >
-                    <Form.List name="items">
-                      {(fields) => (
-                        <div
-                          style={{
-                            display: "flex",
-                            rowGap: 16,
-                            flexDirection: "column",
-                            width: "100%",
-                          }}
-                        >
-                          {fields.map((field) => (
-                            <Form.Item key={field.name} label="Servis">
-                              <Form.List name={[field.name, "list"]}>
-                                {(subFields) => (
-                                  <div
-                                    style={{
-                                      display: "flex",
-                                      flexDirection: "column",
-                                      rowGap: 16,
-                                    }}
-                                  >
-                                    {subFields.map((subField) => {
-                                      const isEditing =
-                                        editingIndex === subField.name;
-                                      const isSuccess =
-                                        successIndex === subField.name;
-
-                                      return (
-                                        <div
-                                          className="!flex justify-between gap-5"
-                                          key={subField.key}
-                                        >
-                                          <Form.Item
-                                            noStyle
-                                            name={[subField.name, "name"]}
-                                          >
-                                            <Input placeholder="Servis nomi" />
-                                          </Form.Item>
-                                          <Form.Item
-                                            noStyle
-                                            name={[subField.name, "price"]}
-                                          >
-                                            <Input
-                                              type="number"
-                                              placeholder="Servis narxi"
-                                            />
-                                          </Form.Item>
-
-                                          {deletingId ===
-                                          checkAddCategoryName?.services[
-                                            subField.name
-                                          ]?.id ? (
-                                            <Spin
-                                              indicator={
-                                                <LoadingOutlined spin />
-                                              }
-                                            />
-                                          ) : (
-                                            <div className="cursor-pointer text-[24px] flex items-center justify-center h-[35px] text-[#bb203a] !w-[50px]">
-                                              <IoTrashOutline
-                                                onClick={() => {
-                                                  const serviceId =
-                                                    checkAddCategoryName
-                                                      ?.services[subField.name]
-                                                      ?.id;
-                                                  if (serviceId) {
-                                                    handleDelete(serviceId);
-                                                  }
-                                                }}
-                                              />
-                                            </div>
-                                          )}
-
-                                          {isEditing ? (
-                                            <Spin
-                                              indicator={
-                                                <LoadingOutlined spin />
-                                              }
-                                            />
-                                          ) : isSuccess ? (
-                                            <div className="text-[25px] flex items-center justify-center h-[35px] text-[#006a31] !w-[50px]">
-                                              <IoCheckmarkDoneSharp />
-                                            </div>
-                                          ) : (
-                                            <div
-                                              onClick={() => {
-                                                const allItems =
-                                                  form.getFieldValue("items");
-                                                const currentService =
-                                                  allItems?.[field.name]
-                                                    ?.list?.[subField.name];
-                                                if (currentService) {
-                                                  handleEditServise(
-                                                    subField.name,
-                                                    {
-                                                      name: currentService.name,
-                                                      price:
-                                                        currentService.price,
-                                                    }
-                                                  );
-                                                }
-                                              }}
-                                              className="text-[25px] flex items-center justify-center h-[35px] cursor-pointer text-[#0D9488] !w-[50px]"
-                                            >
-                                              <IoCheckmarkDoneSharp />
-                                            </div>
-                                          )}
-                                        </div>
-                                      );
-                                    })}
-                                  </div>
-                                )}
-                              </Form.List>
-                            </Form.Item>
-                          ))}
-                        </div>
-                      )}
-                    </Form.List>
-                  </Form>
-
-                  <Form
-                    labelCol={{ span: 6 }}
-                    wrapperCol={{ span: 18 }}
-                    name="new_services_form"
-                    autoComplete="off"
-                    form={categoryForm}
-                    className="!w-full"
-                    onFinish={(values) => {
-                      addServicesMutate({
-                        category: checkAddCategoryName?.id!,
-                        services: values.newServices,
-                      });
-                    }}
-                  >
-                    <Form.List name="newServices">
-                      {(fields, { add, remove }) => (
-                        <div
-                          style={{
-                            display: "flex",
-                            rowGap: 16,
-                            flexDirection: "column",
-                            width: "100%",
-                          }}
-                        >
-                          {fields.map((field) => (
-                            <Form.Item label="Servis">
-                              <div className="!flex justify-between gap-5">
-                                <Form.Item noStyle name={[field.name, "name"]}>
-                                  <Input placeholder="Servis nomi" />
-                                </Form.Item>
-                                <Form.Item noStyle name={[field.name, "price"]}>
-                                  <Input
-                                    type="number"
-                                    placeholder="Servis narxi"
-                                  />
-                                </Form.Item>
-                                <CloseOutlined
-                                  onClick={() => remove(field.name)}
-                                />
-                              </div>
-                            </Form.Item>
-                          ))}
-
-                          <Button
-                            onClick={() => {
-                              add();
-                              setNewServices(true);
-                            }}
-                            className="hover:shadow-md transition-all duration-150"
-                            block
-                          >
-                            + Servis qo'shish
-                          </Button>
-
-                          {newServices && (
-                            <Button
-                              className="!bg-[#0D9488] hover:!bg-[#0C8377] !h-[40px] !text-white hover:shadow-md transition-all duration-150"
-                              htmlType="submit"
-                              block
-                            >
-                              {addServicesLoading ? (
-                                <Spin
-                                  className="!text-[#fff]"
-                                  indicator={<LoadingOutlined spin />}
-                                />
-                              ) : (
-                                "+"
-                              )}{" "}
-                              Yangi servislarni yuborish
-                            </Button>
-                          )}
-                        </div>
-                      )}
-                    </Form.List>
-                  </Form>
-                </div>
-              ) : (
-                checkAddCategoryName &&
-                !value &&
-                !deleteBool && (
-                  <div className="border rounded-xl border-[#F0F0F0] px-4 py-2">
-                    <Form
-                      labelCol={{ span: 6 }}
-                      wrapperCol={{ span: 18 }}
-                      form={form}
-                      name="dynamic_form_complex"
-                      autoComplete="off"
-                      className="!w-full"
-                      onFinish={(value) => addCategoryWithServices(value)}
+                  return (
+                    <button
+                      key={cat.id}
+                      onClick={() => {
+                        setSelectedCategoryId(cat.id);
+                        setCategoryEditMode(false);
+                      }}
+                      className={`flex items-center justify-between gap-2 px-3 py-2.5 rounded-[8px] text-left cursor-pointer transition-colors ${
+                        active ? "bg-[#E9FBF4]" : "hover:bg-[#F9FAFB]"
+                      }`}
                     >
-                      <Form.List name="items">
-                        {(fields, { add, remove }) => (
-                          <div
-                            style={{
-                              display: "flex",
-                              rowGap: 16,
-                              flexDirection: "column",
-                              width: "100%",
-                            }}
-                          >
-                            {fields.map((field) => (
-                              <Card
-                                size="small"
-                                title={
-                                  checkAddCategoryName?.name ||
-                                  "Yangi kategoriya"
-                                }
-                                key={field.key}
-                                extra={
-                                  <CloseOutlined
-                                    onClick={() => {
-                                      remove(field.name);
-                                      setCloseCat(false);
-                                    }}
-                                  />
-                                }
-                              >
-                                <Form.Item label="Servis">
-                                  <Form.List name={[field.name, "list"]}>
-                                    {(subFields, subOpt) => (
-                                      <div
-                                        style={{
-                                          display: "flex",
-                                          flexDirection: "column",
-                                          rowGap: 16,
-                                        }}
-                                      >
-                                        {subFields.map((subField) => (
-                                          <div
-                                            className="!flex justify-between gap-5"
-                                            key={subField.key}
-                                          >
-                                            <Form.Item
-                                              noStyle
-                                              name={[subField.name, "name"]}
-                                            >
-                                              <Input placeholder="Servis nomi" />
-                                            </Form.Item>
-                                            <Form.Item
-                                              noStyle
-                                              name={[subField.name, "price"]}
-                                            >
-                                              <Input
-                                                type="number"
-                                                placeholder="Servis narxi"
-                                              />
-                                            </Form.Item>
-                                            <CloseOutlined
-                                              onClick={() =>
-                                                subOpt.remove(subField.name)
-                                              }
-                                            />
-                                          </div>
-                                        ))}
+                      <span className="flex items-center gap-2.5 min-w-0">
+                        <span
+                          className="w-[32px] h-[32px] shrink-0 rounded-[8px] flex items-center justify-center"
+                          style={{ backgroundColor: style.bg, color: style.text }}
+                        >
+                          <Icon className="text-[16px]" />
+                        </span>
+                        <span className="min-w-0">
+                          <span className="block text-[13px] font-[500] truncate">
+                            {cat.name}
+                          </span>
+                          <span className="block text-[11px] text-[#8F99A3]">
+                            {cat.services.length} ta xizmat
+                          </span>
+                        </span>
+                      </span>
+                      <span
+                        className={`text-[11px] font-[700] px-1.5 py-0.5 rounded-full ${
+                          active
+                            ? "bg-[#0D9488] text-white"
+                            : "bg-[#F1F5F4] text-[#64727B]"
+                        }`}
+                      >
+                        {cat.services.length}
+                      </span>
+                    </button>
+                  );
+                })}
 
-                                        <Button
-                                          onClick={() => subOpt.add()}
-                                          block
-                                          className="hover:shadow-md transition-all duration-150"
-                                        >
-                                          + Servis qo'shish
-                                        </Button>
-                                      </div>
-                                    )}
-                                  </Form.List>
-                                </Form.Item>
-                              </Card>
-                            ))}
+                {filteredCategories.length === 0 && (
+                  <p className="text-[13px] text-[#8F99A3] text-center py-4">
+                    Kategoriya topilmadi
+                  </p>
+                )}
+              </div>
+            )}
 
-                            {checkAddCategoryName && closeCat ? (
-                              <Button
-                                className="!bg-[#0D9488] hover:!bg-[#0C8377] !h-[40px] !text-white hover:shadow-md transition-all duration-150"
-                                htmlType="submit"
-                                block
-                              >
-                                {addServicesLoading ? (
-                                  <Spin
-                                    className="!text-white"
-                                    indicator={<LoadingOutlined spin />}
-                                  />
-                                ) : (
-                                  "+ Ma'lumotlarni yuborish"
-                                )}
-                              </Button>
-                            ) : !closeCat ? (
-                              <Button
-                                className="!bg-[#0D9488] hover:!bg-[#0C8377] !h-[40px] !text-white hover:shadow-md transition-all duration-150"
-                                htmlType="button"
-                                block
-                                onClick={() => {
-                                  setCloseCat(true);
-                                  add();
-                                }}
-                              >
-                                + Kategoriyaga servis qo'shsih
-                              </Button>
-                            ) : (
-                              ""
-                            )}
-                          </div>
-                        )}
-                      </Form.List>
-                    </Form>
-                  </div>
-                )
-              )}
+            {/* Yangi kategoriya */}
+            <div className="flex items-center gap-2 mt-3 pt-3 border-t border-[#F0F2F3]">
+              <input
+                id="new-category-input"
+                value={newCategoryName}
+                onChange={(e) => setNewCategoryName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && newCategoryName.trim()) {
+                    addCategoryMutate({ name: newCategoryName.trim() });
+                  }
+                }}
+                placeholder="Yangi kategoriya"
+                className="flex-1 h-[38px] px-3 rounded-[8px] border border-[#E0E6EB] outline-none text-[13px] focus:border-[#0D9488]"
+              />
+              <button
+                onClick={() =>
+                  newCategoryName.trim() &&
+                  addCategoryMutate({ name: newCategoryName.trim() })
+                }
+                className="flex items-center gap-1 px-3 h-[38px] rounded-[8px] bg-[#0D9488] text-white text-[13px] font-[500] cursor-pointer shrink-0"
+              >
+                {addCategoryLoading ? (
+                  <Spin indicator={<LoadingOutlined spin />} />
+                ) : (
+                  <>
+                    <FiPlus /> Qo'shish
+                  </>
+                )}
+              </button>
             </div>
           </div>
         </div>
+
+        {/* RIGHT: Category detail */}
+        <div className="md:col-span-8 col-span-12">
+          <div className="border bg-[#fff] border-[#E8E8E8] rounded-[10px] p-4 min-h-[300px] relative">
+            {categoryDetailLoading && (
+              <div className="absolute inset-0 bg-white/60 flex items-center justify-center z-10">
+                <Spin indicator={<LoadingOutlined spin />} size="large" />
+              </div>
+            )}
+
+            {!selectedCategoryId || !categoryDetail ? (
+              <div className="flex flex-col items-center justify-center py-16 text-[#8F99A3]">
+                <TbCategoryPlus className="text-[32px] mb-2" />
+                Chapdan kategoriya tanlang
+              </div>
+            ) : (
+              <>
+                <div className="flex items-start justify-between gap-3 mb-4">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <span
+                      className="w-[44px] h-[44px] shrink-0 rounded-[10px] flex items-center justify-center"
+                      style={{
+                        backgroundColor: getCategoryStyle(categoryDetail.id).bg,
+                        color: getCategoryStyle(categoryDetail.id).text,
+                      }}
+                    >
+                      {(() => {
+                        const Icon = getCategoryIcon(categoryDetail.name);
+                        return <Icon className="text-[20px]" />;
+                      })()}
+                    </span>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        {categoryEditMode ? (
+                          <Input
+                            size="small"
+                            value={categoryEditName}
+                            onChange={(e) => setCategoryEditName(e.target.value)}
+                            className="!w-[200px]"
+                          />
+                        ) : (
+                          <h3 className="font-[600] text-[16px] truncate">
+                            {categoryDetail.name}
+                          </h3>
+                        )}
+                        <span
+                          className={`text-[10px] font-[600] px-2 py-0.5 rounded-full shrink-0 ${
+                            categoryDetail.active_count > 0
+                              ? "bg-[#E9FBF4] text-[#0D9488]"
+                              : "bg-[#F1F5F4] text-[#64727B]"
+                          }`}
+                        >
+                          {categoryDetail.active_count > 0 ? "Faol" : "Bo'sh"}
+                        </span>
+                      </div>
+                      <p className="text-[12px] text-[#8F99A3]">
+                        {categoryDetail.service_count} ta xizmat ·{" "}
+                        {categoryDetail.doctor_count} ta shifokor biriktirilgan
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0">
+                    {categoryEditMode ? (
+                      <button
+                        onClick={() => {
+                          if (categoryEditName.trim()) {
+                            updateCategoryMutate({
+                              id: categoryDetail.id,
+                              name: categoryEditName.trim(),
+                            });
+                          }
+                        }}
+                        className="w-[32px] h-[32px] flex items-center justify-center rounded-[8px] bg-[#0D9488] text-white cursor-pointer"
+                      >
+                        {updateCategoryLoading ? (
+                          <Spin indicator={<LoadingOutlined spin />} />
+                        ) : (
+                          <FiEdit2 />
+                        )}
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => {
+                          setCategoryEditName(categoryDetail.name);
+                          setCategoryEditMode(true);
+                        }}
+                        className="w-[32px] h-[32px] flex items-center justify-center rounded-[8px] border border-[#E0E6EB] text-[#44525C] hover:bg-[#F9FAFB] cursor-pointer"
+                      >
+                        <FiEdit2 />
+                      </button>
+                    )}
+
+                    <Popconfirm
+                      title="Kategoriyani o'chirish"
+                      description="Haqiqatan ham o'chirmoqchimisiz?"
+                      onConfirm={() => deleteCategoryMutate(categoryDetail.id)}
+                      okText="Ha"
+                      cancelText="Yo'q"
+                    >
+                      <button className="w-[32px] h-[32px] flex items-center justify-center rounded-[8px] border border-[#FDEDED] text-[#E24C4C] hover:bg-[#FDEDED] cursor-pointer">
+                        <FiTrash2 />
+                      </button>
+                    </Popconfirm>
+
+                    <button
+                      onClick={() => setAddServiceModalOpen(true)}
+                      className="flex items-center gap-1.5 px-3 h-[32px] rounded-[8px] bg-[#0D9488] text-white text-[12px] font-[500] cursor-pointer"
+                    >
+                      <FiPlus /> Xizmat qo'shish
+                    </button>
+                  </div>
+                </div>
+
+                {/* Services table */}
+                {categoryDetail.services.length === 0 ? (
+                  <p className="text-[13px] text-[#8F99A3] text-center py-10">
+                    Bu kategoriyada hali xizmat yo'q
+                  </p>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-[13px]">
+                      <thead>
+                        <tr className="text-[11px] text-[#8F99A3] text-left border-b border-[#F0F2F3]">
+                          <th className="py-2 font-[500]">Xizmat nomi</th>
+                          <th className="py-2 font-[500]">Shifokorlar</th>
+                          <th className="py-2 font-[500]">Davomiyligi</th>
+                          <th className="py-2 font-[500]">Narx</th>
+                          <th className="py-2 font-[500]">Faol</th>
+                          <th className="py-2 font-[500]"></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {categoryDetail.services.map((s) => (
+                          <tr
+                            key={s.id}
+                            className="border-b border-[#F7F8F9] last:border-none"
+                          >
+                            <td className="py-2.5 font-[500]">{s.name}</td>
+                            <td className="py-2.5">
+                              {s.doctors.length === 0 ? (
+                                <span className="text-[#C7CED3]">—</span>
+                              ) : (
+                                <div className="flex items-center -space-x-1.5">
+                                  {s.doctors.slice(0, 2).map((d) => (
+                                    <span
+                                      key={d.id}
+                                      title={d.fio}
+                                      className="w-[22px] h-[22px] rounded-full bg-[#E7F0FA] text-[#2A81D8] text-[9px] font-[700] flex items-center justify-center border border-white"
+                                    >
+                                      {getInitials(d.fio)}
+                                    </span>
+                                  ))}
+                                  {s.doctors.length > 2 && (
+                                    <span className="text-[11px] text-[#8F99A3] pl-2">
+                                      +{s.doctors.length - 2}
+                                    </span>
+                                  )}
+                                </div>
+                              )}
+                            </td>
+                            <td className="py-2.5 text-[#64727B]">
+                              {s.duration_minutes
+                                ? `${s.duration_minutes} daq`
+                                : "—"}
+                            </td>
+                            <td className="py-2.5 font-[600]">
+                              {s.price.toLocaleString()} so'm
+                            </td>
+                            <td className="py-2.5">
+                              <Switch
+                                size="small"
+                                checked={s.is_active}
+                                onChange={() => toggleServiceActive(s)}
+                              />
+                            </td>
+                            <td className="py-2.5">
+                              <div className="flex items-center gap-1">
+                                <button
+                                  onClick={() => setEditingService(s)}
+                                  className="w-[28px] h-[28px] flex items-center justify-center rounded-[6px] text-[#44525C] hover:bg-[#F9FAFB] cursor-pointer"
+                                >
+                                  <FiEdit2 className="text-[13px]" />
+                                </button>
+                                <Popconfirm
+                                  title="Xizmatni o'chirish"
+                                  description="Haqiqatan ham o'chirmoqchimisiz?"
+                                  onConfirm={() => handleDeleteService(s.id)}
+                                  okText="Ha"
+                                  cancelText="Yo'q"
+                                >
+                                  <button className="w-[28px] h-[28px] flex items-center justify-center rounded-[6px] text-[#E24C4C] hover:bg-[#FDEDED] cursor-pointer">
+                                    {deletingServiceId === s.id ? (
+                                      <Spin
+                                        indicator={<LoadingOutlined spin />}
+                                      />
+                                    ) : (
+                                      <FiTrash2 className="text-[13px]" />
+                                    )}
+                                  </button>
+                                </Popconfirm>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+
+                <button
+                  onClick={() => setAddServiceModalOpen(true)}
+                  className="w-full mt-3 py-2.5 rounded-[8px] border border-dashed border-[#E0E6EB] text-[13px] text-[#0D9488] font-[500] hover:bg-[#F9FAFB] cursor-pointer"
+                >
+                  + {categoryDetail.name} kategoriyasiga yangi xizmat qo'shish
+                </button>
+
+                {categoryDetail.services.length > 0 && (
+                  <div className="flex items-center justify-between mt-3 pt-3 border-t border-[#F0F2F3] text-[12px] text-[#8F99A3]">
+                    <span>
+                      {categoryDetail.service_count} ta xizmat ·{" "}
+                      {categoryDetail.active_count} ta faol
+                    </span>
+                    <span>
+                      Narx oralig'i:{" "}
+                      {categoryDetail.price_min?.toLocaleString()} -{" "}
+                      {categoryDetail.price_max?.toLocaleString()} so'm
+                    </span>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        </div>
       </div>
+
+      {/* Add service modal */}
+      <Modal
+        title="Yangi xizmat qo'shish"
+        open={addServiceModalOpen}
+        onCancel={() => setAddServiceModalOpen(false)}
+        footer={false}
+        centered
+      >
+        <Form
+          form={addServiceForm}
+          layout="vertical"
+          onFinish={(values) => {
+            if (!selectedCategoryId) return;
+            addServicesMutate({
+              category: selectedCategoryId,
+              services: [
+                {
+                  name: values.name,
+                  price: Number(values.price),
+                  duration_minutes: values.duration_minutes
+                    ? Number(values.duration_minutes)
+                    : null,
+                },
+              ],
+            });
+          }}
+        >
+          <Form.Item
+            name="name"
+            label="Xizmat nomi"
+            rules={[{ required: true, message: "Xizmat nomini kiriting!" }]}
+          >
+            <Input />
+          </Form.Item>
+          <Form.Item
+            name="price"
+            label="Narxi (so'm)"
+            rules={[{ required: true, message: "Narxini kiriting!" }]}
+          >
+            <Input type="number" />
+          </Form.Item>
+          <Form.Item name="duration_minutes" label="Davomiyligi (daqiqa)">
+            <Input type="number" placeholder="Masalan: 30" />
+          </Form.Item>
+          <Button
+            type="primary"
+            htmlType="submit"
+            block
+            style={{ background: "#0D9488" }}
+          >
+            {addServicesLoading ? (
+              <Spin indicator={<LoadingOutlined spin />} />
+            ) : (
+              "Saqlash"
+            )}
+          </Button>
+        </Form>
+      </Modal>
+
+      {/* Edit service modal */}
+      <Modal
+        title="Xizmatni tahrirlash"
+        open={!!editingService}
+        onCancel={() => setEditingService(null)}
+        footer={false}
+        centered
+      >
+        <Form
+          form={editServiceForm}
+          layout="vertical"
+          onFinish={(values) => {
+            if (!editingService) return;
+            editServiceMutate({
+              id: editingService.id,
+              obj: {
+                name: values.name,
+                category: categoryDetail?.id,
+                price: Number(values.price),
+                duration_minutes: values.duration_minutes
+                  ? Number(values.duration_minutes)
+                  : null,
+              },
+            });
+          }}
+        >
+          <Form.Item
+            name="name"
+            label="Xizmat nomi"
+            rules={[{ required: true, message: "Xizmat nomini kiriting!" }]}
+          >
+            <Input />
+          </Form.Item>
+          <Form.Item
+            name="price"
+            label="Narxi (so'm)"
+            rules={[{ required: true, message: "Narxini kiriting!" }]}
+          >
+            <Input type="number" />
+          </Form.Item>
+          <Form.Item name="duration_minutes" label="Davomiyligi (daqiqa)">
+            <Input type="number" placeholder="Masalan: 30" />
+          </Form.Item>
+          <Button
+            type="primary"
+            htmlType="submit"
+            block
+            style={{ background: "#0D9488" }}
+          >
+            {editServiceLoading ? (
+              <Spin indicator={<LoadingOutlined spin />} />
+            ) : (
+              "Saqlash"
+            )}
+          </Button>
+        </Form>
+      </Modal>
     </div>
   );
 }

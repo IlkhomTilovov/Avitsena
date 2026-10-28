@@ -13,11 +13,12 @@ from apps.services.models import (
 )
 from drf_spectacular.utils import (
     extend_schema,
-    OpenApiParameter
+    OpenApiParameter,
+    inline_serializer
 )
 from drf_spectacular.types import OpenApiTypes
-from rest_framework import status
-from django.db.models import Prefetch
+from rest_framework import status, serializers
+from django.db.models import Prefetch, Count, Avg
 from apps.shared.permissions import IsRegistratorOrAdmin
 from rest_framework.exceptions import NotFound
 from collections import defaultdict
@@ -169,6 +170,55 @@ class ServiceListCreateView(APIView):
                 message=error_message,
                 status=status.HTTP_400_BAD_REQUEST
             )
+
+
+class ServiceStatsView(APIView):
+
+    permission_classes = (IsRegistratorOrAdmin, )
+
+    @extend_schema(
+        tags=['doctor-services'],
+        responses={
+            status.HTTP_200_OK: inline_serializer(
+                name='Service stats response',
+                fields={
+                    'total_categories': serializers.IntegerField(),
+                    'total_services': serializers.IntegerField(),
+                    'average_price': serializers.FloatField(),
+                    'most_popular_service': serializers.CharField(allow_null=True),
+                }
+            )
+        }
+    )
+    def get(self, request):
+
+        clinic = request.user.clinic
+
+        total_categories = ServiceCategory.objects.filter(clinic=clinic).count()
+
+        services_qs = Service.objects.filter(clinic=clinic)
+
+        total_services = services_qs.count()
+
+        average_price = services_qs.aggregate(avg=Avg('price'))['avg'] or 0
+
+        most_popular = services_qs \
+            .annotate(visit_count=Count('patientvisit')) \
+            .order_by('-visit_count') \
+            .first()
+
+        most_popular_name = (
+            most_popular.name
+            if most_popular and most_popular.visit_count > 0
+            else None
+        )
+
+        return CustomResponse(data={
+            'total_categories': total_categories,
+            'total_services': total_services,
+            'average_price': round(average_price, 2),
+            'most_popular_service': most_popular_name
+        })
 
 
 class ServiceCategoryDetailView(APIView):
