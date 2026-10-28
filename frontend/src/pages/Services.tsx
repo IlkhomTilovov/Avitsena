@@ -470,7 +470,7 @@ export default function Services() {
                 <Spin indicator={<LoadingOutlined spin />} />
               </div>
             ) : (
-              <div className="flex flex-col gap-1 max-h-[480px] overflow-y-auto">
+              <div className="flex flex-col gap-1 max-h-[432px] overflow-y-auto">
                 {filteredCategories.map((cat) => {
                   const style = getCategoryStyle(cat.id);
                   const Icon = getCategoryIcon(cat.name);
