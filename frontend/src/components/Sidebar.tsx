@@ -2,7 +2,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { useQuery } from "react-query";
 import { IoHomeOutline, IoSettingsOutline } from "react-icons/io5";
 import { LuUsers, LuUserPlus } from "react-icons/lu";
-import { TbReportMedical } from "react-icons/tb";
+import { TbReportMedical, TbCategoryPlus } from "react-icons/tb";
 import { MdOutlineDateRange } from "react-icons/md";
 import { FiLogOut, FiPlus, FiHeadphones } from "react-icons/fi";
 import { MenuFoldOutlined, MenuUnfoldOutlined } from "@ant-design/icons";
@@ -54,6 +54,7 @@ export default function Sidebar() {
   ];
 
   const systemItems: NavItem[] = [
+    { key: "services", path: "/services", icon: <TbCategoryPlus />, label: "Xizmatlar" },
     { key: "settings", path: "/settings", icon: <IoSettingsOutline />, label: "Sozlamalar" },
   ];
 

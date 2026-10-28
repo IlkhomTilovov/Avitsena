@@ -15,6 +15,7 @@ import PriviteRote from "./queries/PriviteRote";
 import Registration from "./pages/Registration";
 import PatientsInfo from "./components/PatientsInfo";
 import Settings from "./pages/Settings";
+import Services from "./pages/Services";
 import EmployeeInfo from "./components/EmployeeInfo";
 import SettingDoctor from "./pages/SettingDoctor";
 
@@ -87,6 +88,14 @@ function App() {
             element={
               <PriviteRote>
                 <Settings />
+              </PriviteRote>
+            }
+          />
+          <Route
+            path="services"
+            element={
+              <PriviteRote>
+                <Services />
               </PriviteRote>
             }
           />
