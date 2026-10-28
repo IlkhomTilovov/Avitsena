@@ -82,11 +82,32 @@ class PatientListCreateSerializer(serializers.ModelSerializer):
         default=None
     )
 
+    code = serializers.CharField(
+        read_only=True,
+        default=None
+    )
+
+    visit_count = serializers.IntegerField(
+        read_only=True,
+        default=0
+    )
+
+    last_visit_doctor = serializers.CharField(
+        read_only=True,
+        default=None
+    )
+
+    today_visit_status = serializers.CharField(
+        read_only=True,
+        default=None
+    )
+
     class Meta:
 
         model = Patient
         fields = (
             'id',
+            'code',
             'first_name',
             'last_name',
             'middle_name',
@@ -106,6 +127,9 @@ class PatientListCreateSerializer(serializers.ModelSerializer):
             'height',
             'weight',
             'last_visit_date',
+            'last_visit_doctor',
+            'today_visit_status',
+            'visit_count',
             'created_at'
         )
         read_only_fields = (

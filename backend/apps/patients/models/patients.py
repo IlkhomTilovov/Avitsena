@@ -1,4 +1,4 @@
-from django.db import models
+from django.db import models, transaction
 from apps.shared.models import AbstractBaseModel
 from apps.patients.choices import (
     BloodGroup,
@@ -18,6 +18,11 @@ class Patient(AbstractBaseModel):
         'clinics.Clinic',
         related_name='patients',
         on_delete=models.CASCADE
+    )
+
+    number = models.PositiveIntegerField(
+        editable=False,
+        null=True
     )
 
     first_name = models.CharField(
@@ -106,6 +111,34 @@ class Patient(AbstractBaseModel):
         verbose_name = _('Partient')
         verbose_name_plural = _('Partients')
         ordering = ('-created_at', )
+        constraints = [
+            models.UniqueConstraint(fields=['clinic', 'number'], name='unique_clinic_patient_number')
+        ]
+
+    @property
+    def code(self):
+
+        if self.number is None:
+
+            return None
+
+        return f'AV-{self.number:04d}'
+
+    def save(self, *args, **kwargs):
+
+        if self.number is None:
+
+            with transaction.atomic():
+
+                last = Patient.objects \
+                    .select_for_update() \
+                    .filter(clinic=self.clinic) \
+                    .order_by('-number') \
+                    .first()
+
+                self.number = (last.number if last and last.number else 0) + 1
+
+        super().save(*args, **kwargs)
 
 
 class PatientPasport(models.Model):

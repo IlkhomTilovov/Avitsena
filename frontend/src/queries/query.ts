@@ -133,6 +133,7 @@ type PatientRequest = Omit<
 // Bitta bemorning qisqa ma’lumotlari (search uchun)
 type PatientSearchItem = {
   id: string;
+  code: string | null;
   first_name: string;
   last_name: string;
   phone: string;
@@ -140,7 +141,21 @@ type PatientSearchItem = {
   status: "active" | "inactive" | string; // agar boshqa statuslar bo‘lishi mumkin bo‘lsa string qoldiramiz
   date_of_birth: string; // YYYY-MM-DD format
   last_visit_date: string | null; // oxirgi tashrif sanasi, null bo‘lishi mumkin
+  last_visit_doctor: string | null;
+  today_visit_status: "pending" | "in_progress" | "cancelled" | "completed" | null;
+  visit_count: number;
   created_at: string; // ISO datetime
+};
+
+type PatientStatsResponse = {
+  success: boolean;
+  message: string;
+  data: {
+    total: number;
+    active: number;
+    inactive: number;
+    new_this_month: number;
+  };
 };
 
 // Pagination meta ma’lumotlari
@@ -534,7 +549,9 @@ export const OneMedAdmin = {
     per_page?: number,
     search?: string,
     status?: string,
-    gender?: string
+    gender?: string,
+    doctor?: string,
+    month?: string
   ): Promise<PatientSearchResponse> => {
     const response = await api.get(`${baseApi}/v1/patients`, {
       params: {
@@ -543,7 +560,19 @@ export const OneMedAdmin = {
         search: search || undefined,
         status: status || undefined,
         gender: gender || undefined,
+        doctor: doctor || undefined,
+        month: month || undefined,
       },
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+
+    return response.data;
+  },
+
+  getPatientsStats: async (): Promise<PatientStatsResponse> => {
+    const response = await api.get(`${baseApi}/v1/patients/stats`, {
       headers: {
         "Content-Type": "application/json",
       },

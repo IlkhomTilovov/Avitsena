@@ -1,6 +1,6 @@
 from rest_framework.views import APIView
-from rest_framework import status
-from drf_spectacular.utils import extend_schema, OpenApiParameter
+from rest_framework import status, serializers
+from drf_spectacular.utils import extend_schema, OpenApiParameter, inline_serializer
 from drf_spectacular.types import OpenApiTypes
 from apps.shared.response import CustomResponse
 from apps.shared.pagination import CustomPagination
@@ -18,7 +18,7 @@ from apps.api.v1.serializers import (
 from apps.patients.models import Patient, PatientVisit, PatientVisitRecipe
 from rest_framework.exceptions import NotFound
 from apps.shared.choices import StatusTextChoices, UserRole
-from django.db.models import Q, OuterRef, Subquery, DateField, Exists
+from django.db.models import Q, OuterRef, Subquery, DateField, CharField, Count, Exists
 from django.db.models.functions import Cast
 from django.utils import timezone
 from datetime import datetime
@@ -41,20 +41,40 @@ class PatientListCreateView(APIView):
 
         status = query_params.get('status')
 
+        doctor_id = query_params.get('doctor')
+
+        month = query_params.get('month')
+
         last_visit_subquery = PatientVisit.objects \
             .filter(patient=OuterRef('id')) \
             .only('created_at') \
+            .order_by('-created_at')
+
+        today = timezone.now().date()
+
+        today_visit_subquery = PatientVisit.objects \
+            .filter(patient=OuterRef('id'), created_at__date=today) \
             .order_by('-created_at')
 
         queryset = Patient.objects \
             .filter(clinic=user.clinic) \
             .annotate(
                 last_visit_date=Cast(
-                Subquery(
-                    last_visit_subquery.values('created_at')[:1]
+                    Subquery(
+                        last_visit_subquery.values('created_at')[:1]
+                    ),
+                    output_field=DateField()
                 ),
-                output_field=DateField()
-            ))
+                last_visit_doctor=Subquery(
+                    last_visit_subquery.values('doctor__fio')[:1],
+                    output_field=CharField()
+                ),
+                today_visit_status=Subquery(
+                    today_visit_subquery.values('status')[:1],
+                    output_field=CharField()
+                ),
+                visit_count=Count('visits', distinct=True)
+            )
 
         if gender:
 
@@ -63,7 +83,29 @@ class PatientListCreateView(APIView):
         if status:
 
             queryset = queryset.filter(status=status)
-        
+
+        if doctor_id:
+
+            doctor_visits_subquery = PatientVisit.objects \
+                .filter(patient=OuterRef('id'), doctor_id=doctor_id)
+
+            queryset = queryset.filter(Exists(doctor_visits_subquery))
+
+        if month:
+
+            try:
+
+                year_str, month_str = month.split('-')
+
+                queryset = queryset.filter(
+                    created_at__year=int(year_str),
+                    created_at__month=int(month_str)
+                )
+
+            except (ValueError, AttributeError):
+
+                pass
+
         if user.role == UserRole.DOCTOR:
 
             doctor_visits = PatientVisit.objects \
@@ -184,6 +226,44 @@ class PatientListCreateView(APIView):
         )
 
         return paginator.get_paginated_response(serializer.data)
+
+
+class PatientStatsView(APIView):
+
+    @extend_schema(
+        tags=['patients'],
+        responses={
+            status.HTTP_200_OK: inline_serializer(
+                name='Patient stats response',
+                fields={
+                    'total': serializers.IntegerField(),
+                    'active': serializers.IntegerField(),
+                    'inactive': serializers.IntegerField(),
+                    'new_this_month': serializers.IntegerField()
+                }
+            )
+        }
+    )
+    def get(self, request):
+
+        clinic = request.user.clinic
+
+        now = timezone.now()
+
+        stats = Patient.objects.filter(clinic=clinic).aggregate(
+            total=Count('id'),
+            active=Count('id', filter=Q(status=StatusTextChoices.ACTIVE)),
+            inactive=Count('id', filter=Q(status=StatusTextChoices.INACTIVE)),
+            new_this_month=Count(
+                'id',
+                filter=Q(
+                    created_at__year=now.year,
+                    created_at__month=now.month
+                )
+            )
+        )
+
+        return CustomResponse(data=stats)
 
 
 class PatientDetailView(APIView):
