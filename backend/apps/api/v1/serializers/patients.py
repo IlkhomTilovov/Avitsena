@@ -5,13 +5,15 @@ from apps.patients.models import (
     PatientPasport,
     PatientIDCard,
     PatientDriverLicense,
-    PatientVisitRecipe
+    PatientVisitRecipe,
+    PatientAnalysis
 )
 from .services import ServiceSerializer
-from apps.patients.choices import DocumentType
+from apps.patients.choices import DocumentType, PatientVisitStatus
 from apps.users.models import CustomUser
 from typing import Union
 from django.utils import timezone
+from django.db.models import Sum, Count, Q
 
     
 class VisitRecipeserializer(serializers.ModelSerializer):
@@ -34,6 +36,43 @@ class VisitRecipeserializer(serializers.ModelSerializer):
 class VisitRecipeCreateSerializer(serializers.Serializer):
 
     recipes = VisitRecipeserializer(many=True)
+
+
+class PatientAnalysisSerializer(serializers.ModelSerializer):
+
+    file = serializers.SerializerMethodField()
+
+    class Meta:
+
+        model = PatientAnalysis
+        fields = (
+            'id',
+            'visit',
+            'name',
+            'result',
+            'file',
+            'created_at'
+        )
+        read_only_fields = (
+            'id',
+            'created_at'
+        )
+
+    def get_file(self, instance) -> Union[str, None]:
+
+        request = self.context.get('request')
+
+        if instance.file and hasattr(instance.file, 'url') and request:
+
+            return request.build_absolute_uri(instance.file.url)
+
+        return None
+
+    def create(self, validated_data):
+
+        validated_data['patient'] = self.context['patient']
+
+        return PatientAnalysis.objects.create(**validated_data)
 
 
 class PatientPasportSerializer(serializers.ModelSerializer):
@@ -240,11 +279,19 @@ class PatientDetailSerializer(serializers.ModelSerializer):
         allow_null=True
     )
 
+    code = serializers.CharField(
+        read_only=True,
+        default=None
+    )
+
+    stats = serializers.SerializerMethodField()
+
     class Meta:
 
         model = Patient
         fields = (
             'id',
+            'code',
             'first_name',
             'last_name',
             'middle_name',
@@ -263,6 +310,10 @@ class PatientDetailSerializer(serializers.ModelSerializer):
             'pasport',
             'idcard',
             'driver_license',
+            'allergies',
+            'medications',
+            'next_visit_date',
+            'stats',
             'created_at',
             'updated_at'
         )
@@ -270,6 +321,30 @@ class PatientDetailSerializer(serializers.ModelSerializer):
             'created_at',
             'updated_at'
         )
+
+    def get_stats(self, instance) -> dict:
+
+        visit_aggregate = instance.visits.aggregate(
+            total_visits=Count('id'),
+            total_paid=Sum('total_price', filter=Q(status=PatientVisitStatus.COMPLETED)),
+            diagnosis_count=Count('id', filter=~Q(diagnosis='') & Q(diagnosis__isnull=False)),
+            recipe_count=Count('recipes', distinct=True)
+        )
+
+        last_visit = instance.visits.order_by('-created_at').first()
+
+        analysis_count = instance.analyses.count()
+
+        return {
+            'total_visits': visit_aggregate['total_visits'] or 0,
+            'last_visit_date': last_visit.created_at if last_visit else None,
+            'next_visit_date': instance.next_visit_date,
+            'total_paid': visit_aggregate['total_paid'] or 0,
+            'diagnosis_count': visit_aggregate['diagnosis_count'] or 0,
+            'recipe_count': visit_aggregate['recipe_count'] or 0,
+            'analysis_count': analysis_count,
+            'payment_count': visit_aggregate['total_visits'] or 0
+        }
     
     def validate(self, attrs):
 

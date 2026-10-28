@@ -30,6 +30,7 @@ from apps.api.v1.views import (
     PatientListCreateView,
     PatientStatsView,
     PatientDetailView,
+    PatientAnalysisListCreateView,
     PatientVisitListCreateView,
     PatientVisitDetailView,
     VisitRecipeCreateView,
@@ -74,6 +75,7 @@ urlpatterns = [
     path('patients', PatientListCreateView.as_view(), name='patient_list_create'),
     path('patients/stats', PatientStatsView.as_view(), name='patient_stats'),
     path('patients/<uuid:id>', PatientDetailView.as_view(), name='patient_detail'),
+    path('patients/<uuid:id>/analyses', PatientAnalysisListCreateView.as_view(), name='patient_analysis_list_create'),
     path('patients/<uuid:id>/visits', PatientVisitListCreateView.as_view(), name='patient_visit_lis_create'),
     path('patients/<uuid:id>/visits/<uuid:visit_id>', PatientVisitDetailView.as_view(), name='patient_visit_detail')
 ]

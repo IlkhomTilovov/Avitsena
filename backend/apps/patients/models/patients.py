@@ -105,6 +105,21 @@ class Patient(AbstractBaseModel):
 
     is_returning = models.BooleanField(default=False)
 
+    allergies = models.TextField(
+        blank=True,
+        null=True
+    )
+
+    medications = models.TextField(
+        blank=True,
+        null=True
+    )
+
+    next_visit_date = models.DateTimeField(
+        blank=True,
+        null=True
+    )
+
     class Meta:
 
         db_table = 'patients'
@@ -310,4 +325,43 @@ class PatientVisitRecipe(models.Model):
         db_table = 'patient_visit_recipes'
         verbose_name = _('Patient visit recipe')
         verbose_name_plural = _('Patient visit recipes')
+
+
+class PatientAnalysis(AbstractBaseModel):
+
+    patient = models.ForeignKey(
+        Patient,
+        on_delete=models.CASCADE,
+        related_name='analyses'
+    )
+
+    visit = models.ForeignKey(
+        PatientVisit,
+        on_delete=models.SET_NULL,
+        related_name='analyses',
+        blank=True,
+        null=True
+    )
+
+    name = models.CharField(
+        max_length=255
+    )
+
+    result = models.TextField(
+        blank=True,
+        null=True
+    )
+
+    file = models.FileField(
+        upload_to=upload_to_uuid,
+        blank=True,
+        null=True
+    )
+
+    class Meta:
+
+        db_table = 'patient_analyses'
+        verbose_name = _('Patient analysis')
+        verbose_name_plural = _('Patient analyses')
+        ordering = ('-created_at', )
 

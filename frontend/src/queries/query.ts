@@ -81,8 +81,20 @@ type DriverLicense = {
   jshr: string;
 };
 
+type PatientStats = {
+  total_visits: number;
+  last_visit_date: string | null;
+  next_visit_date: string | null;
+  total_paid: number;
+  diagnosis_count: number;
+  recipe_count: number;
+  analysis_count: number;
+  payment_count: number;
+};
+
 type Patient = {
   id: string;
+  code?: string | null;
   first_name: string;
   last_name: string;
   middle_name: string;
@@ -101,6 +113,10 @@ type Patient = {
   pasport: Document | null;
   idcard: Document | null;
   driver_license: DriverLicense | null;
+  allergies?: string | null;
+  medications?: string | null;
+  next_visit_date?: string | null;
+  stats?: PatientStats;
   created_at: string;
   updated_at: string;
 };
@@ -915,5 +931,46 @@ export const OneMedAdmin = {
       `${baseApi}/v1/patients/${id}/visits/${visitId}`
     );
     return response.data || { message: "Deleted successfully", success: true };
+  },
+
+  updatePatientMedicalNotes: async (
+    id: string,
+    obj: {
+      allergies?: string | null;
+      medications?: string | null;
+      next_visit_date?: string | null;
+    }
+  ): Promise<any> => {
+    const response = await api.patch(`${baseApi}/v1/patients/${id}`, obj, {
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+    return response.data;
+  },
+
+  getPatientAnalyses: async (id: string): Promise<any> => {
+    const response = await api.get(`${baseApi}/v1/patients/${id}/analyses`, {
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+    return response.data;
+  },
+
+  addPatientAnalysis: async (
+    id: string,
+    obj: { name: string; result?: string }
+  ): Promise<any> => {
+    const response = await api.post(
+      `${baseApi}/v1/patients/${id}/analyses`,
+      obj,
+      {
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    );
+    return response.data;
   },
 };

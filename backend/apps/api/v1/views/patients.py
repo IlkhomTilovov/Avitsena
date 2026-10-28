@@ -13,9 +13,10 @@ from apps.api.v1.serializers import (
     PatientVisitUpdateSerializer,
     VisitRecipeserializer,
     VisitRecipeCreateSerializer,
-    TodayVisitListSerializer
+    TodayVisitListSerializer,
+    PatientAnalysisSerializer
 )
-from apps.patients.models import Patient, PatientVisit, PatientVisitRecipe
+from apps.patients.models import Patient, PatientVisit, PatientVisitRecipe, PatientAnalysis
 from rest_framework.exceptions import NotFound
 from apps.shared.choices import StatusTextChoices, UserRole
 from django.db.models import Q, OuterRef, Subquery, DateField, CharField, Count, Exists
@@ -264,6 +265,90 @@ class PatientStatsView(APIView):
         )
 
         return CustomResponse(data=stats)
+
+
+class PatientAnalysisListCreateView(APIView):
+
+    serializer_class = PatientAnalysisSerializer
+    pagination_class = CustomPagination
+
+    def get_queryset(self):
+
+        user = self.request.user
+
+        patient_id = self.kwargs['id']
+
+        return PatientAnalysis.objects \
+            .filter(
+                patient_id=patient_id,
+                patient__clinic=user.clinic
+            )
+
+    def get_patient(self):
+
+        try:
+
+            return Patient.objects \
+                .filter(clinic=self.request.user.clinic) \
+                .get(id=self.kwargs['id'])
+
+        except Patient.DoesNotExist:
+
+            raise NotFound('Patient not found')
+
+    @extend_schema(tags=['patients'])
+    def get(self, request, id):
+
+        queryset = self.get_queryset()
+
+        paginator = self.pagination_class()
+
+        paginated_queryset = paginator.paginate_queryset(queryset, request)
+
+        serializer = self.serializer_class(
+            paginated_queryset,
+            many=True,
+            context={'request': request}
+        )
+
+        return paginator.get_paginated_response(serializer.data)
+
+    @extend_schema(
+        tags=['patients'],
+        request=PatientAnalysisSerializer
+    )
+    def post(self, request, id):
+
+        patient = self.get_patient()
+
+        serializer = self.serializer_class(
+            data=request.data,
+            context={'request': request, 'patient': patient}
+        )
+
+        if serializer.is_valid():
+
+            analysis = serializer.save()
+
+            data = self.serializer_class(
+                analysis,
+                context={'request': request}
+            ).data
+
+            return CustomResponse(
+                data=data,
+                status=status.HTTP_201_CREATED
+            )
+
+        else:
+
+            error_message = str(serializer.errors)
+
+            return CustomResponse(
+                success=False,
+                message=error_message,
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
 
 class PatientDetailView(APIView):

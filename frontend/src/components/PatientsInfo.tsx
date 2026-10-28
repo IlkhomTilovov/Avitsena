@@ -76,9 +76,22 @@ type DriverLicense = {
   jshr: string;
 };
 
+// Bemor statistikasi (bemor sahifasi uchun)
+type PatientStats = {
+  total_visits: number;
+  last_visit_date: string | null;
+  next_visit_date: string | null;
+  total_paid: number;
+  diagnosis_count: number;
+  recipe_count: number;
+  analysis_count: number;
+  payment_count: number;
+};
+
 // Bemor modeli
 type Patient = {
   id: string;
+  code?: string | null;
   first_name: string;
   last_name: string;
   middle_name: string;
@@ -97,8 +110,27 @@ type Patient = {
   pasport: Document | null;
   idcard: Document | null;
   driver_license: DriverLicense | null;
+  allergies?: string | null;
+  medications?: string | null;
+  next_visit_date?: string | null;
+  stats?: PatientStats;
   created_at: string;
   updated_at: string;
+};
+
+// Tahlil (analiz) modeli
+type Analysis = {
+  id: string;
+  visit: string | null;
+  name: string;
+  result: string | null;
+  file: string | null;
+  created_at: string;
+};
+
+type AnalysesResponse = {
+  success: boolean;
+  data: Analysis[];
 };
 
 // Patientni select qilganda qaytadigan API javobi
@@ -229,8 +261,6 @@ interface ReceiptData {
 type NotificationType = "success" | "info" | "warning" | "error";
 // ========================= COMPONENT =========================
 export default function PatientsInfo() {
-  // Segment (Tashriflar / Dorilar) uchun state
-  const [segmentValue, setSegmentValue] = useState(true);
 
   const [form] = Form.useForm();
   const [formUpdate] = Form.useForm();
@@ -259,7 +289,6 @@ export default function PatientsInfo() {
   // Modal ochish-yopish handlerlari
   const showModal = () => {
     setIsVisitOpen(true);
-    setSegmentValue(true);
   };
   const handleCancel = () => setIsVisitOpen(false);
 
@@ -426,6 +455,89 @@ export default function PatientsInfo() {
     staleTime: Infinity,
     cacheTime: Infinity,
   });
+
+  // 5. Tibbiy tarix tablari (Tashriflar / Tashxislar / Tahlillar / Retseptlar / To'lovlar)
+  type HistoryTab = "visits" | "diagnoses" | "analyses" | "recipes" | "payments";
+  const [activeHistoryTab, setActiveHistoryTab] = useState<HistoryTab>("visits");
+
+  const { data: analysesData, isLoading: analysesLoading } = useQuery<
+    AnalysesResponse,
+    Error
+  >({
+    queryKey: ["patientAnalyses", id],
+    queryFn: () => OneMedAdmin.getPatientAnalyses(id!),
+    enabled: !!id && activeHistoryTab === "analyses",
+  });
+
+  const [analysisModalOpen, setAnalysisModalOpen] = useState(false);
+  const [analysisForm] = Form.useForm();
+
+  const { mutate: addAnalysisMutate, isLoading: addAnalysisLoading } =
+    useMutation<any, Error, { name: string; result?: string }>(
+      (obj) => OneMedAdmin.addPatientAnalysis(id!, obj),
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries(["patientAnalyses", id]);
+          openNotificationWithIcon(
+            "success",
+            "Tahlil qo'shildi",
+            "Yangi tahlil muvaffaqiyatli saqlandi!"
+          );
+          analysisForm.resetFields();
+          setAnalysisModalOpen(false);
+        },
+        onError: () => {
+          openNotificationWithIcon(
+            "error",
+            "Xatolik yuz berdi",
+            "Tahlil qo'shishda xatolik, qaytadan urinib ko'ring!"
+          );
+        },
+      }
+    );
+
+  // 6. Tibbiy eslatmalar (allergiya / doimiy dorilar) va keyingi qabul
+  const [notesEditMode, setNotesEditMode] = useState(false);
+  const [notesForm] = Form.useForm();
+
+  useEffect(() => {
+    if (patientData) {
+      notesForm.setFieldsValue({
+        allergies: patientData.data.allergies,
+        medications: patientData.data.medications,
+        next_visit_date: patientData.data.next_visit_date
+          ? dayjs(patientData.data.next_visit_date)
+          : null,
+      });
+    }
+  }, [patientData]);
+
+  const { mutate: updateNotesMutate, isLoading: updateNotesLoading } =
+    useMutation<
+      any,
+      Error,
+      { allergies?: string; medications?: string; next_visit_date?: string | null }
+    >(
+      (obj) => OneMedAdmin.updatePatientMedicalNotes(id!, obj),
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries(["patient", id]);
+          openNotificationWithIcon(
+            "success",
+            "Saqlandi",
+            "Tibbiy eslatmalar yangilandi!"
+          );
+          setNotesEditMode(false);
+        },
+        onError: () => {
+          openNotificationWithIcon(
+            "error",
+            "Xatolik yuz berdi",
+            "Qaytadan urinib ko'ring!"
+          );
+        },
+      }
+    );
 
   // ========================= MUTATION =========================
 
@@ -868,61 +980,104 @@ export default function PatientsInfo() {
         {receiptData && <Receipt ref={componentRef} data={receiptData} />}
       </div>
 
-      <div className="flex items-center justify-between my-4">
-        {/* Orqaga qaytish */}
-        {contextHolder}
-        <div className="flex items-center gap-4">
-          <Link
-            to={`${
-              currentPath === "doctor"
-                ? "/doctor/patients"
-                : currentPath === "register"
-                ? "/register/patients"
-                : "/patients"
-            }`}
-            className="items-center hidden md:flex gap-1 px-6 py-2.5 text-[14px] font-[500] rounded-md hover:bg-[#E6F4FF]"
-          >
-            <IoMdArrowBack className="text-[16px]" />
-            Orqaga
-          </Link>
+      {contextHolder}
 
-          {/* Patient ismi + avatar */}
-          <div className="flex items-center gap-3">
-            <div className="flex uppercase justify-center items-center w-[60px] h-[60px] font-[600] text-[18px] rounded-full bg-[#DBEAFE] text-[#2B7FFF]">
-              {logo1}
-              {logo2}
-            </div>
-            <div>
-              <h2 className="md:text-[22px] text-[18px] font-[600] mb-[-5px]">
-                {patientData?.data.first_name} {patientData?.data.last_name}
-              </h2>
-              <p className="text-[#9D99AB] font-[300] md:text-[14px] text-[12px]">
-                {age} yosh, {gender}
-              </p>
-            </div>
+      {/* Breadcrumb */}
+      <div className="flex items-center gap-2 my-4 text-[13px]">
+        <Link
+          to={`${
+            currentPath === "doctor"
+              ? "/doctor/patients"
+              : currentPath === "register"
+              ? "/register/patients"
+              : "/patients"
+          }`}
+          className="flex items-center gap-1 text-[#8F99A3] hover:text-[#44525C]"
+        >
+          <IoMdArrowBack className="text-[14px]" />
+          Bemorlar
+        </Link>
+        <span className="text-[#C7CED3]">/</span>
+        <span className="font-[500] text-[#44525C]">
+          {patientData?.data.first_name} {patientData?.data.last_name}
+        </span>
+      </div>
+
+      {/* BANNER */}
+      <div className="relative overflow-hidden rounded-[14px] bg-gradient-to-r from-[#0D9488] to-[#14B8A6] px-6 py-5 mb-4 flex md:flex-row flex-col md:items-center items-start gap-4">
+        <svg
+          className="absolute right-0 top-0 h-full w-[260px] opacity-30 pointer-events-none hidden md:block"
+          viewBox="0 0 260 100"
+          preserveAspectRatio="none"
+        >
+          <polyline
+            points="0,50 40,50 55,20 70,80 90,50 130,50 145,30 160,70 180,50 260,50"
+            fill="none"
+            stroke="#fff"
+            strokeWidth="2"
+          />
+        </svg>
+
+        <div className="relative shrink-0">
+          <div className="flex uppercase justify-center items-center w-[64px] h-[64px] font-[700] text-[18px] rounded-full bg-white/90 text-[#0D9488]">
+            {logo1}
+            {logo2}
+          </div>
+          {patientData?.data.status === "active" && (
+            <span className="absolute bottom-0 right-0 w-[14px] h-[14px] rounded-full bg-[#1DC981] border-2 border-[#0D9488]" />
+          )}
+        </div>
+
+        <div className="relative flex-1 text-white min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <h2 className="text-[20px] font-[700]">
+              {patientData?.data.first_name} {patientData?.data.last_name}
+            </h2>
+            <span className="flex items-center gap-1 text-[11px] font-[600] bg-white/15 px-2 py-0.5 rounded-full">
+              <span className="w-[6px] h-[6px] rounded-full bg-[#1DC981]" />
+              {patientData?.data.status === "active" ? "Faol" : "Nofaol"}
+            </span>
+          </div>
+          <div className="flex items-center gap-3 flex-wrap text-[12px] text-white/80 mt-1">
+            {patientData?.data.code && <span>{patientData.data.code}</span>}
+            <span>{gender}</span>
+            <span>
+              {age} yosh &middot; {patientData?.data.date_of_birth}
+            </span>
+            {patientData?.data.blood_group && (
+              <span>❤ {patientData.data.blood_group}</span>
+            )}
           </div>
         </div>
 
-        {/* Edit tugmasi */}
-        <div className="flex items-center gap-3">
+        <div className="relative flex items-center gap-2 shrink-0">
           {currentPath === "doctor" || currentPath === "register" ? (
             ""
           ) : (
             <button
               onClick={showDeleteModal}
-              className="cursor-pointer  hover:shadow-md transition-all duration-150 text-red-500 border-red-500 md:px-6 px-3 md:py-2 py-1.5 border  rounded-md md:text-[14px] text-[12px flex md:gap-2 hover:bg-[#ffe6e6] transition-all duration-150"
+              className="cursor-pointer hover:shadow-md transition-all duration-150 text-white border-white/40 px-4 py-2 border rounded-md text-[13px] flex items-center gap-1.5 hover:bg-white/10"
             >
-              <GoTrash className="md:text-[18px] text-[16px]" />
+              <GoTrash className="text-[15px]" />
               O'chirish
             </button>
           )}
           <button
             onClick={showEditModal}
-            className="cursor-pointer  hover:shadow-md transition-all duration-150 text-blue-500 border-blue-500 md:px-6 px-3 md:py-2 py-1.5 border  rounded-md md:text-[14px] text-[12px flex md:gap-2 hover:bg-[#E6F4FF] transition-all duration-150"
+            className="cursor-pointer hover:shadow-md transition-all duration-150 text-white border-white/40 px-4 py-2 border rounded-md text-[13px] flex items-center gap-1.5 hover:bg-white/10"
           >
-            <BiSolidEditAlt className="md:text-[18px] text-[16px]" />
+            <BiSolidEditAlt className="text-[15px]" />
             Tahrirlash
           </button>
+          {currentPath !== "doctor" && (
+            <button
+              onClick={showModal}
+              className="cursor-pointer hover:shadow-md transition-all duration-150 text-[#0D9488] bg-white px-4 py-2 rounded-md text-[13px] font-[600] flex items-center gap-1.5"
+            >
+              <AppstoreOutlined />
+              Qabulga yozish
+            </button>
+          )}
         </div>
       </div>
 
@@ -931,49 +1086,157 @@ export default function PatientsInfo() {
         {/* LEFT: Asosiy ma'lumotlar */}
         <div className="md:col-span-4 col-span-12 flex flex-col gap-3">
           <div className="border bg-[#fff] border-[#E8E8E8] p-[25px] rounded-[10px]">
-            <div className="flex items-center gap-2">
-              <RiUser3Line className="text-[#2B7FFF] md:text-[22px] text-[18px]" />
-              <h3 className="md:text-[20px] text-[16px] font-[500]">
-                Asosiy ma'lumotlar
-              </h3>
-            </div>
-
-            {/* Avatar */}
-            <div className="flex justify-center flex-col text-center mt-[20px]">
-              <div className="mx-auto uppercase w-[80px] h-[80px] mb-2 flex items-center justify-center rounded-full bg-[#DBEAFE] font-[600] text-[18px] text-[#2B7FFF]">
-                {logo1}
-                {logo2}
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <RiUser3Line className="text-[#0D9488] md:text-[22px] text-[18px]" />
+                <h3 className="md:text-[20px] text-[16px] font-[500]">
+                  Asosiy ma'lumotlar
+                </h3>
               </div>
-              <h4 className="font-[500]">
-                {patientData?.data.first_name} {patientData?.data.last_name}
-              </h4>
-              <p className="text-[#b6b6b6]">{age} yosh</p>
+              <button
+                onClick={showEditModal}
+                className="text-[12px] text-[#0D9488] hover:underline cursor-pointer"
+              >
+                Tahrirlash
+              </button>
             </div>
 
             {/* Qo‘shimcha info */}
-            <div className="flex flex-col gap-3 mt-[40px] text-[12px] md:text-[16px]">
+            <div className="flex flex-col gap-3 mt-[20px] text-[12px] md:text-[14px]">
               <div className="flex items-center gap-4">
-                <BsCalendar4 />
+                <BsCalendar4 className="text-[#8F99A3]" />
                 <p>{patientData?.data.date_of_birth}</p>
               </div>
               <div className="flex items-center gap-4">
-                <LuUser />
+                <LuUser className="text-[#8F99A3]" />
                 <p>{gender}</p>
               </div>
               <div className="flex items-center gap-4">
-                <LuHeart />
-                <p>{patientData?.data.blood_group}</p>
+                <LuHeart className="text-[#8F99A3]" />
+                <p>{patientData?.data.blood_group || "Kiritilmagan"}</p>
               </div>
               <div className="flex items-center gap-4">
-                <BsTelephone />
+                <BsTelephone className="text-[#8F99A3]" />
                 <p>{patientData?.data.phone}</p>
+              </div>
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-4">
+                  <LuUser className="text-[#8F99A3] opacity-0" />
+                  <p>{patientData?.data.address || "Manzil kiritilmagan"}</p>
+                </div>
+                {!patientData?.data.address && (
+                  <span className="text-[10px] font-[600] text-[#B5820A] bg-[#FEF6E6] px-2 py-0.5 rounded-full shrink-0">
+                    To'ldirish
+                  </span>
+                )}
               </div>
             </div>
           </div>
+
+          {/* Tibbiy eslatmalar */}
+          <div className="border bg-[#fff] border-[#E8E8E8] p-[25px] rounded-[10px]">
+            <div className="flex items-center justify-between gap-2 mb-3">
+              <h3 className="md:text-[16px] text-[14px] font-[500]">
+                Tibbiy eslatmalar
+              </h3>
+              <button
+                onClick={() => setNotesEditMode(!notesEditMode)}
+                className="text-[12px] text-[#0D9488] hover:underline cursor-pointer"
+              >
+                {notesEditMode ? "Bekor qilish" : "Qo'shish"}
+              </button>
+            </div>
+
+            {notesEditMode ? (
+              <Form
+                form={notesForm}
+                layout="vertical"
+                onFinish={(values) =>
+                  updateNotesMutate({
+                    ...values,
+                    next_visit_date: values.next_visit_date
+                      ? values.next_visit_date.toISOString()
+                      : null,
+                  })
+                }
+              >
+                <Form.Item name="allergies" label="Allergiya">
+                  <Input placeholder="Masalan: Penitsillin" />
+                </Form.Item>
+                <Form.Item name="medications" label="Doimiy dorilar">
+                  <Input placeholder="Masalan: Metformin 500mg" />
+                </Form.Item>
+                <Form.Item name="next_visit_date" label="Keyingi qabul sanasi">
+                  <DatePicker showTime className="!w-full" />
+                </Form.Item>
+                <Button
+                  type="primary"
+                  htmlType="submit"
+                  block
+                  style={{ background: "#0D9488" }}
+                >
+                  {updateNotesLoading ? (
+                    <Spin indicator={<LoadingOutlined spin />} />
+                  ) : (
+                    "Saqlash"
+                  )}
+                </Button>
+              </Form>
+            ) : (
+              <div className="flex flex-col gap-3 text-[13px]">
+                <div>
+                  <p className="text-[11px] text-[#8F99A3]">Allergiya</p>
+                  <p>{patientData?.data.allergies || "Ma'lumot yo'q"}</p>
+                </div>
+                <div>
+                  <p className="text-[11px] text-[#8F99A3]">Doimiy dorilar</p>
+                  <p>{patientData?.data.medications || "Ma'lumot yo'q"}</p>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
+        {/* RIGHT: Statistika + Tibbiy tarix */}
+        <div className="md:col-span-8 col-span-12 flex flex-col gap-3">
+          {/* Stat mini-cards */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="border bg-[#fff] border-[#E8E8E8] rounded-[10px] px-4 py-3">
+              <p className="text-[11px] text-[#8F99A3]">Jami tashriflar</p>
+              <p className="text-[18px] font-[700]">
+                {patientData?.data.stats?.total_visits ?? 0} ta
+              </p>
+            </div>
+            <div className="border bg-[#fff] border-[#E8E8E8] rounded-[10px] px-4 py-3">
+              <p className="text-[11px] text-[#8F99A3]">So'nggi tashrif</p>
+              <p className="text-[14px] font-[700]">
+                {patientData?.data.stats?.last_visit_date
+                  ? dayjs(patientData.data.stats.last_visit_date).format(
+                      "YYYY-MM-DD"
+                    )
+                  : "—"}
+              </p>
+            </div>
+            <div className="border bg-[#fff] border-[#E8E8E8] rounded-[10px] px-4 py-3">
+              <p className="text-[11px] text-[#8F99A3]">Keyingi qabul</p>
+              <p className="text-[14px] font-[700]">
+                {patientData?.data.next_visit_date
+                  ? dayjs(patientData.data.next_visit_date).format(
+                      "YYYY-MM-DD"
+                    )
+                  : "—"}
+              </p>
+            </div>
+            <div className="border bg-[#fff] border-[#E8E8E8] rounded-[10px] px-4 py-3">
+              <p className="text-[11px] text-[#8F99A3]">Jami to'lov</p>
+              <p className="text-[14px] font-[700]">
+                {(patientData?.data.stats?.total_paid ?? 0).toLocaleString()}{" "}
+                so'm
+              </p>
+            </div>
+          </div>
+
         {/* RIGHT: Tibbiy tarix */}
-        <div className="md:col-span-8 col-span-12">
           <div className="border bg-[#fff] border-[#E8E8E8] p-[25px] rounded-[10px]">
             {/* Header */}
             <div className="flex items-center gap-2 mb-3">
@@ -984,32 +1247,130 @@ export default function PatientsInfo() {
             </div>
 
             {/* Tabs */}
-            {/* <Segmented
-              onChange={() => setSegmentValue(!segmentValue)}
-              options={["Tashriflar", "Dorilar"]}
-              className="!p-1 seg"
-              block
-            /> */}
+            <div className="flex items-center gap-1 flex-wrap border-b border-[#ECEFF1] mb-4">
+              {(
+                [
+                  { key: "visits", label: "Tashriflar", count: patientData?.data.stats?.total_visits },
+                  { key: "diagnoses", label: "Tashxislar", count: patientData?.data.stats?.diagnosis_count },
+                  { key: "analyses", label: "Tahlillar", count: patientData?.data.stats?.analysis_count },
+                  { key: "recipes", label: "Retseptlar", count: patientData?.data.stats?.recipe_count },
+                  { key: "payments", label: "To'lovlar", count: patientData?.data.stats?.payment_count },
+                ] as { key: HistoryTab; label: string; count?: number }[]
+              ).map((tab) => (
+                <button
+                  key={tab.key}
+                  onClick={() => setActiveHistoryTab(tab.key)}
+                  className={`px-3 py-2 text-[13px] font-[500] border-b-2 -mb-[1px] cursor-pointer transition-colors ${
+                    activeHistoryTab === tab.key
+                      ? "border-[#0D9488] text-[#0D9488]"
+                      : "border-transparent text-[#8F99A3] hover:text-[#44525C]"
+                  }`}
+                >
+                  {tab.label}{" "}
+                  <span className="text-[11px]">{tab.count ?? 0}</span>
+                </button>
+              ))}
+            </div>
 
             {/* Tashriflar bo‘limi */}
             <div>
               {/* Header */}
               <div className="flex justify-between items-center my-4">
                 <h3 className="font-[500] text-[14px] md:text-[16px]">
-                  Tashriflar tarixi
+                  {activeHistoryTab === "visits" && "Tashriflar tarixi"}
+                  {activeHistoryTab === "diagnoses" && "Tashxislar"}
+                  {activeHistoryTab === "analyses" && "Tahlillar"}
+                  {activeHistoryTab === "recipes" && "Retseptlar"}
+                  {activeHistoryTab === "payments" && "To'lovlar"}
                 </h3>
-                {currentPath === "doctor" ? (
+                {activeHistoryTab === "analyses" && currentPath !== "doctor" ? (
+                  <button
+                    onClick={() => setAnalysisModalOpen(true)}
+                    className="flex hover:shadow-md transition-all duration-150 items-center text-white bg-[#0D9488] text-[12px] px-4 py-2.5 gap-2 rounded-md cursor-pointer"
+                  >
+                    <AppstoreOutlined /> Tahlil qo'shish
+                  </button>
+                ) : currentPath === "doctor" ? (
                   ""
                 ) : (
                   <button
                     onClick={showModal}
-                    className="flex  hover:shadow-md transition-all duration-150 items-center text-white bg-[#4D94FF] text-[12px] px-4 py-2.5 gap-2 rounded-md cursor-pointer"
+                    className="flex  hover:shadow-md transition-all duration-150 items-center text-white bg-[#0D9488] text-[12px] px-4 py-2.5 gap-2 rounded-md cursor-pointer"
                   >
-                    <AppstoreOutlined className="text-[#4D94FF] hidden md:block" />{" "}
+                    <AppstoreOutlined className="hidden md:block" />{" "}
                     Yangi tashrif qo'shish
                   </button>
                 )}
               </div>
+
+              {/* Tahlil qo'shish modal */}
+              <Modal
+                title="Yangi tahlil qo'shish"
+                open={analysisModalOpen}
+                onCancel={() => setAnalysisModalOpen(false)}
+                footer={false}
+                centered
+              >
+                <Form
+                  form={analysisForm}
+                  layout="vertical"
+                  onFinish={(values) => addAnalysisMutate(values)}
+                >
+                  <Form.Item
+                    name="name"
+                    label="Tahlil nomi"
+                    rules={[{ required: true, message: "Tahlil nomini kiriting!" }]}
+                  >
+                    <Input placeholder="Masalan: Qon tahlili" />
+                  </Form.Item>
+                  <Form.Item name="result" label="Natija">
+                    <Input.TextArea placeholder="Natija haqida qisqacha" />
+                  </Form.Item>
+                  <Button
+                    type="primary"
+                    htmlType="submit"
+                    block
+                    style={{ background: "#0D9488" }}
+                  >
+                    {addAnalysisLoading ? (
+                      <Spin indicator={<LoadingOutlined spin />} />
+                    ) : (
+                      "Saqlash"
+                    )}
+                  </Button>
+                </Form>
+              </Modal>
+
+              {/* Tahlillar ro'yxati */}
+              {activeHistoryTab === "analyses" &&
+                (analysesLoading ? (
+                  <div className="flex justify-center items-center py-10">
+                    <Spin indicator={<LoadingOutlined spin />} size="large" />
+                  </div>
+                ) : !analysesData?.data?.length ? (
+                  <Empty description="Hali tahlillar yo'q" />
+                ) : (
+                  analysesData.data.map((a) => (
+                    <div
+                      key={a.id}
+                      className="border border-[#c9c9c9] rounded-[10px] border-l-[4px] border-l-[#0D9488] px-6 py-4 mb-4"
+                    >
+                      <div className="flex items-center justify-between">
+                        <h4 className="md:text-[17px] text-[13px] font-[500]">
+                          {a.name}
+                        </h4>
+                        <span className="md:text-[14px] text-[10px] text-[#676767]">
+                          {dayjs(a.created_at).format("YYYY-MM-DD HH:mm")}
+                        </span>
+                      </div>
+                      {a.result && (
+                        <p className="text-[13px] text-[#676767] mt-2">
+                          {a.result}
+                        </p>
+                      )}
+                    </div>
+                  ))
+                ))}
 
               {/* Modal  yangi tashrif*/}
 
@@ -1535,109 +1896,150 @@ export default function PatientsInfo() {
                   </Form>
                 )}
               </Modal>
-              {/* Tashriflar ro‘yxati */}
-              {segmentValue ? (
-                !patientVisitesData?.data?.length ? (
-                  <Empty />
+              {/* Retseptlar tabi uchun eslatma */}
+              {activeHistoryTab === "recipes" &&
+                (!patientVisitesData?.data?.length ? (
+                  <Empty description="Hali tashriflar yo'q" />
                 ) : (
-                  patientVisitesData?.data?.map((item) => {
-                    const formatted = dayjs(item.created_at).format(
-                      "YYYY-MM-DD HH:mm"
-                    );
+                  <p className="text-[13px] text-[#8F99A3] mb-3">
+                    Retseptni ko'rish uchun quyidagi tashriflardan birini
+                    tanlang.
+                  </p>
+                ))}
 
-                    const status =
-                      item.status === "pending"
-                        ? "Kutilmoqda"
-                        : item.status === "in_progress"
-                        ? "Jarayonda"
-                        : item.status === "cancelled"
-                        ? "Bekor qilingan"
-                        : "Tekshirilgan";
-                    return (
-                      <div
-                        key={item.id}
-                        onClick={() => handleTextDiagnos(item.id)}
-                        className={`border cursor-pointer border-[#c9c9c9] rounded-[10px] border-l-[4px] border-l-[#4D94FF] px-6 py-4 mb-4`}
-                      >
-                        <div className="flex items-center justify-between">
-                          <h4 className="md:text-[17px] text-[13px] font-[500]">
-                            {item.doctor}
-                          </h4>
-                          <span className="md:text-[14px] text-[10px] text-[#676767]">
-                            {formatted}
-                          </span>
-                        </div>
+              {/* Tashriflar / Tashxislar / To'lovlar ro‘yxati */}
+              {(activeHistoryTab === "visits" ||
+                activeHistoryTab === "diagnoses" ||
+                activeHistoryTab === "payments" ||
+                activeHistoryTab === "recipes") &&
+                (!patientVisitesData?.data?.length ? (
+                  activeHistoryTab === "visits" ? (
+                    <div className="flex flex-col items-center text-center py-10">
+                      <div className="w-[64px] h-[64px] rounded-full bg-[#E9FBF4] flex items-center justify-center text-[#0D9488] text-[28px] mb-3">
+                        <GrDocumentText />
+                      </div>
+                      <h4 className="font-[600] mb-1">Hali tashriflar yo'q</h4>
+                      <p className="text-[13px] text-[#8F99A3] max-w-[360px] mb-4">
+                        Bemorning birinchi tashrifini qo'shing — shikoyatlar,
+                        tavsiyalar va tarix shu yerda ko'rinishda saqlanadi.
+                      </p>
+                      <div className="flex items-center gap-2 text-[12px] text-[#8F99A3] mb-4 flex-wrap justify-center">
+                        <span className="px-3 py-1 rounded-full bg-[#F1F5F4]">
+                          1 Shifokorni tanlang
+                        </span>
+                        <span>›</span>
+                        <span className="px-3 py-1 rounded-full bg-[#F1F5F4]">
+                          2 Shikoyat va tashxis
+                        </span>
+                        <span>›</span>
+                        <span className="px-3 py-1 rounded-full bg-[#F1F5F4]">
+                          3 Retsept va to'lov
+                        </span>
+                      </div>
+                      {currentPath !== "doctor" && (
+                        <button
+                          onClick={showModal}
+                          className="flex hover:shadow-md transition-all duration-150 items-center text-white bg-[#0D9488] text-[13px] px-5 py-2.5 gap-2 rounded-md cursor-pointer"
+                        >
+                          <AppstoreOutlined /> Yangi tashrif qo'shish
+                        </button>
+                      )}
+                    </div>
+                  ) : (
+                    <Empty />
+                  )
+                ) : (
+                  patientVisitesData?.data
+                    ?.filter((item) =>
+                      activeHistoryTab === "diagnoses"
+                        ? item.diagnosis !== null
+                        : true
+                    )
+                    .map((item) => {
+                      const formatted = dayjs(item.created_at).format(
+                        "YYYY-MM-DD HH:mm"
+                      );
 
-                        <div className="flex justify-between items-end">
-                          <ul className="mt-3 flex flex-col gap-1">
-                            <li className="flex items-center md:text-[14px] text-[12px] gap-2 text-[#676767]">
-                              <span className="font-[400] text-[#000]">
-                                Status:
-                              </span>
-                              <div
-                                className={`${
-                                  item.status === "pending"
-                                    ? "bg-[#afc4d9]"
-                                    : item.status === "in_progress"
-                                    ? "bg-[#CDF4E4]"
-                                    : item.status === "cancelled"
-                                    ? "bg-[#c47d7d]"
-                                    : "bg-[#2ef6a3]"
-                                } px-3 py-0.5 text-white rounded-[4px]`}
-                              >
-                                {status}
-                              </div>
-                            </li>
-                            <li className="flex items-center md:text-[14px] text-[12px] gap-2 text-[#676767]">
-                              <span className="font-[400] text-[#000]">
-                                Servislar:
-                              </span>
-                              {item.services?.map((i, index) => (
-                                <span
-                                  key={i.id || index}
-                                  className="text-blue-500"
-                                >
-                                  {i.name}
-                                  {index !== item.services?.length - 1 && ", "}
-                                </span>
-                              ))}
-                            </li>
-                            {item.diagnosis !== null && (
+                      const status =
+                        item.status === "pending"
+                          ? "Kutilmoqda"
+                          : item.status === "in_progress"
+                          ? "Jarayonda"
+                          : item.status === "cancelled"
+                          ? "Bekor qilingan"
+                          : "Tekshirilgan";
+                      return (
+                        <div
+                          key={item.id}
+                          onClick={() => handleTextDiagnos(item.id)}
+                          className={`border cursor-pointer border-[#c9c9c9] rounded-[10px] border-l-[4px] border-l-[#0D9488] px-6 py-4 mb-4`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <h4 className="md:text-[17px] text-[13px] font-[500]">
+                              {item.doctor}
+                            </h4>
+                            <span className="md:text-[14px] text-[10px] text-[#676767]">
+                              {formatted}
+                            </span>
+                          </div>
+
+                          <div className="flex justify-between items-end">
+                            <ul className="mt-3 flex flex-col gap-1">
                               <li className="flex items-center md:text-[14px] text-[12px] gap-2 text-[#676767]">
                                 <span className="font-[400] text-[#000]">
-                                  Tashhis:
+                                  Status:
                                 </span>
-                                {item.diagnosis}
+                                <div
+                                  className={`${
+                                    item.status === "pending"
+                                      ? "bg-[#afc4d9]"
+                                      : item.status === "in_progress"
+                                      ? "bg-[#CDF4E4]"
+                                      : item.status === "cancelled"
+                                      ? "bg-[#c47d7d]"
+                                      : "bg-[#2ef6a3]"
+                                  } px-3 py-0.5 text-white rounded-[4px]`}
+                                >
+                                  {status}
+                                </div>
                               </li>
-                            )}
-                            <li className="flex items-center md:text-[14px] text-[12px] gap-2 text-[#676767]">
-                              <span className="font-[400] text-[#000]">
-                                To'lov:
-                              </span>
-                              {item.total_price} so'm
-                            </li>
-                          </ul>
+                              <li className="flex items-center md:text-[14px] text-[12px] gap-2 text-[#676767]">
+                                <span className="font-[400] text-[#000]">
+                                  Servislar:
+                                </span>
+                                {item.services?.map((i, index) => (
+                                  <span
+                                    key={i.id || index}
+                                    className="text-blue-500"
+                                  >
+                                    {i.name}
+                                    {index !== item.services?.length - 1 &&
+                                      ", "}
+                                  </span>
+                                ))}
+                              </li>
+                              {item.diagnosis !== null && (
+                                <li className="flex items-center md:text-[14px] text-[12px] gap-2 text-[#676767]">
+                                  <span className="font-[400] text-[#000]">
+                                    Tashhis:
+                                  </span>
+                                  {item.diagnosis}
+                                </li>
+                              )}
+                              <li className="flex items-center md:text-[14px] text-[12px] gap-2 text-[#676767]">
+                                <span className="font-[400] text-[#000]">
+                                  To'lov:
+                                </span>
+                                {item.total_price} so'm
+                              </li>
+                            </ul>
+                          </div>
                         </div>
-                      </div>
-                    );
-                  })
-                )
-              ) : (
-                // Agar "Dorilar" segmenti tanlansa
-                <div className="border border-[#c9c9c9] rounded-[10px] border-l-[4px] border-l-[#A855F7] px-6 py-4 mb-4">
-                  <div className="flex items-center justify-between">
-                    <h4 className="text-[17px] font-[500]">Metformin 500mg</h4>
-                    <span className="text-[14px] text-[#676767]">
-                      2024-12-15
-                    </span>
-                  </div>
-                  <p className="text-[14px] text-[#676767] mt-[-3px]">
-                    Kuniga 2 marta
-                  </p>
-                </div>
-              )}
+                      );
+                    })
+                ))}
               {/* Pagination */}
-              {segmentValue &&
+              {activeHistoryTab !== "analyses" &&
                 patientVisitesData?.meta?.total_items &&
                 patientVisitesData.meta.total_items > 10 && (
                   <div className="px-6 py-4 border bg-[#F9FAFB] border-[#E0E6EB] flex items-center justify-end rounded-[10px]">
