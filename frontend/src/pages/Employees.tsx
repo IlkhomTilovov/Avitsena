@@ -275,8 +275,21 @@ export default function Employees() {
   return (
     <div className="pr-[10px] md:pr-auto">
       {contextHolder}
+
+      {/* Breadcrumb */}
+      <div className="flex items-center gap-2 mt-4 text-[13px]">
+        <Link
+          to="/dashboard"
+          className="text-[#8F99A3] hover:text-[#44525C]"
+        >
+          Bosh sahifa
+        </Link>
+        <span className="text-[#C7CED3]">/</span>
+        <span className="font-[500] text-[#44525C]">Xodimlar</span>
+      </div>
+
       {/* Header */}
-      <div className="flex md:flex-row flex-col md:items-center items-start justify-between gap-3 mt-[30px] mb-4">
+      <div className="flex md:flex-row flex-col md:items-center items-start justify-between gap-3 mt-3 mb-4">
         <div>
           <h1 className="md:text-[22px] text-[18px] font-[600]">
             Xodimlar boshqaruvi
