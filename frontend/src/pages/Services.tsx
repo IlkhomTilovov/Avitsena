@@ -444,7 +444,7 @@ export default function Services() {
         </div>
       </div>
 
-      <div className="grid grid-cols-12 gap-3">
+      <div className="grid grid-cols-12 gap-3 items-start">
         {/* LEFT: Categories list */}
         <div className="md:col-span-4 col-span-12">
           <div className="border bg-[#fff] border-[#E8E8E8] rounded-[10px] p-4">
@@ -676,9 +676,9 @@ export default function Services() {
                     Bu kategoriyada hali xizmat yo'q
                   </p>
                 ) : (
-                  <div className="overflow-x-auto max-h-[480px] overflow-y-auto">
+                  <div className="overflow-x-auto">
                     <table className="w-full text-[13px]">
-                      <thead className="sticky top-0 bg-white z-[1]">
+                      <thead>
                         <tr className="text-[11px] text-[#8F99A3] text-left border-b border-[#F0F2F3]">
                           <th className="py-2 font-[500]">Xizmat nomi</th>
                           <th className="py-2 font-[500]">Shifokorlar</th>
