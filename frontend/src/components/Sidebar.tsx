@@ -92,9 +92,9 @@ export default function Sidebar() {
 
   return (
     <div
-      className={`min-h-screen ${
+      className={`h-full ${
         collapsed ? "w-[80px]" : "w-[280px]"
-      } flex flex-col bg-white border-r border-[#ECEFF1] px-3 py-4`}
+      } flex flex-col bg-white border border-[#ECEFF1] rounded-[20px] shadow-sm px-3 py-4 overflow-y-auto`}
     >
       {/* Logo */}
       <div
