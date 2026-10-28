@@ -676,9 +676,9 @@ export default function Services() {
                     Bu kategoriyada hali xizmat yo'q
                   </p>
                 ) : (
-                  <div className="overflow-x-auto">
+                  <div className="overflow-x-auto max-h-[432px] overflow-y-auto">
                     <table className="w-full text-[13px]">
-                      <thead>
+                      <thead className="sticky top-0 bg-white z-[1]">
                         <tr className="text-[11px] text-[#8F99A3] text-left border-b border-[#F0F2F3]">
                           <th className="py-1.5 font-[500]">Xizmat nomi</th>
                           <th className="py-1.5 font-[500]">Shifokorlar</th>
