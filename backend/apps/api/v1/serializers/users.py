@@ -315,8 +315,23 @@ class UserListSerializer(serializers.ModelSerializer):
 
     doctor = DoctorSerializer()
 
+    specialty = serializers.CharField(
+        read_only=True,
+        default=None
+    )
+
+    today_count = serializers.IntegerField(
+        read_only=True,
+        default=0
+    )
+
+    month_count = serializers.IntegerField(
+        read_only=True,
+        default=0
+    )
+
     class Meta:
-        
+
         model = CustomUser
         fields = (
             'id',
@@ -325,7 +340,11 @@ class UserListSerializer(serializers.ModelSerializer):
             'role',
             'phone',
             'status',
-            'doctor'
+            'doctor',
+            'specialty',
+            'today_count',
+            'month_count',
+            'last_login'
         )
 
 

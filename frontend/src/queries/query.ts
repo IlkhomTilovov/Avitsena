@@ -450,7 +450,8 @@ export const OneMedAdmin = {
     page: number,
     per_page?: number,
     search?: string,
-    role?: string
+    role?: string,
+    status?: string
   ) => {
     const response = await api.get(`${baseApi}/v1/users`, {
       params: {
@@ -458,6 +459,7 @@ export const OneMedAdmin = {
         per_page: per_page || undefined,
         search: search || undefined,
         role: role || undefined,
+        status: status || undefined,
       },
       headers: {
         "Content-Type": "application/json",

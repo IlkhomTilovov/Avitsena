@@ -1,4 +1,4 @@
-import { FiPlus } from "react-icons/fi";
+import { FiPlus, FiDownload, FiCalendar, FiGrid, FiList } from "react-icons/fi";
 import {
   AutoComplete,
   Card,
@@ -20,6 +20,7 @@ import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "react-query";
 import { baseApi, OneMedAdmin } from "../queries/query";
 import { LoadingOutlined } from "@ant-design/icons";
+import dayjs from "dayjs";
 import "../App.css";
 import axios from "axios";
 
@@ -31,7 +32,51 @@ type EmployeeResponseType = {
   phone: string;
   status: string;
   services?: string[];
+  specialty?: string | null;
+  today_count?: number;
+  month_count?: number;
+  last_login?: string | null;
+  doctor?: { experience_year: number | null; room_number: number | null } | null;
 };
+
+const ROLE_LABEL: Record<string, string> = {
+  doctor: "Shifokor",
+  registrator: "Registrator",
+  admin: "Administrator",
+};
+
+const ROLE_BADGE_COLOR: Record<string, string> = {
+  doctor: "bg-[#EAF1FF] text-[#2D6FE0]",
+  registrator: "bg-[#FEF6E6] text-[#B5820A]",
+  admin: "bg-[#EFEAFB] text-[#7A5BD8]",
+};
+
+const AVATAR_COLORS = [
+  { bg: "#E7F0FA", text: "#2A81D8" },
+  { bg: "#FCEAF2", text: "#D6468A" },
+  { bg: "#FEF3E0", text: "#D98A1B" },
+  { bg: "#EFEAFB", text: "#7A5BD8" },
+  { bg: "#E9FBF4", text: "#0D9488" },
+  { bg: "#FDECEC", text: "#D3453F" },
+];
+
+function getAvatarColor(key: string) {
+  let hash = 0;
+  for (let i = 0; i < key.length; i++) hash = key.charCodeAt(i) + ((hash << 5) - hash);
+  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
+}
+
+function getInitials(fio: string) {
+  const parts = fio.trim().split(/\s+/);
+  return `${parts[0]?.[0] || ""}${parts[1]?.[0] || ""}`.toUpperCase();
+}
+
+function formatLastLogin(lastLogin?: string | null) {
+  if (!lastLogin) return "Hali kirmagan";
+  const diffMinutes = dayjs().diff(dayjs(lastLogin), "minute");
+  if (diffMinutes < 15) return "Hozir";
+  return dayjs(lastLogin).format("YYYY-MM-DD HH:mm");
+}
 type EmployeeObjType = {
   fio: string;
   username: string;
@@ -77,6 +122,8 @@ export default function Employees() {
   };
 
   const [searchText, setSearchText] = useState("");
+  const [empStatus, setEmpStatus] = useState("");
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [selectedEmployee, setSelectedEmployee] =
     useState<EmployeeResponseType | null>(null);
 
@@ -84,11 +131,19 @@ export default function Employees() {
     setSearchText("");
   }, []);
 
+  const { data: clinicStats } = useQuery({
+    queryKey: ["allStat"],
+    queryFn: () => OneMedAdmin.allStat(),
+    staleTime: Infinity,
+  });
+
+  const staffStats = clinicStats?.data?.staff_stats;
+
   // Xodimlar olish
   const { data: employeesData, isLoading } = useQuery({
-    queryKey: ["employees", page, per_page, searchText, role],
+    queryKey: ["employees", page, per_page, searchText, role, empStatus],
     queryFn: () =>
-      OneMedAdmin.getEmployeesFilter(page, per_page, searchText, role),
+      OneMedAdmin.getEmployeesFilter(page, per_page, searchText, role, empStatus),
     keepPreviousData: true,
     refetchOnWindowFocus: false,
   });
@@ -221,118 +276,320 @@ export default function Employees() {
     <div className="pr-[10px] md:pr-auto">
       {contextHolder}
       {/* Header */}
-      <div className="flex items-center justify-between mt-[30px]">
+      <div className="flex md:flex-row flex-col md:items-center items-start justify-between gap-3 mt-[30px] mb-4">
         <div>
           <h1 className="md:text-[22px] text-[18px] font-[600]">
             Xodimlar boshqaruvi
           </h1>
           <p className="text-[14px] md:text-[16px] text-[#8F99A3]">
-            Klinika xodimlari va ularning jadvallarini boshqarish
+            Klinika xodimlari va ularning ish jadvallarini boshqarish
           </p>
         </div>
-        <button
-          onClick={() => setIsModalOpen(true)}
-          className="flex gap-2 text-[14px] md:text-[16px] items-center py-2 px-4 rounded-md text-white cursor-pointer bg-[#2B7FFF] hover:shadow-md transition-all duration-150"
-        >
-          <FiPlus className="md:text-[20px] text-[14px] hidden md:block" />
-          Xodim qo'shish
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => {
+              const rows = employeesData?.data || [];
+              if (!rows.length) return;
+              const header = ["F.I.O", "Username", "Rol", "Telefon", "Holat"];
+              const csvRows = rows.map((r: EmployeeResponseType) => [
+                r.fio,
+                r.username,
+                ROLE_LABEL[r.role] || r.role,
+                r.phone,
+                r.status === "active" ? "Faol" : "Nofaol",
+              ]);
+              const csvContent = [header, ...csvRows]
+                .map((row: string[]) =>
+                  row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(",")
+                )
+                .join("\n");
+              const blob = new Blob(["﻿" + csvContent], {
+                type: "text/csv;charset=utf-8;",
+              });
+              const url = URL.createObjectURL(blob);
+              const link = document.createElement("a");
+              link.href = url;
+              link.download = `xodimlar_${dayjs().format("YYYY-MM-DD")}.csv`;
+              link.click();
+              URL.revokeObjectURL(url);
+            }}
+            className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-[10px] border border-[#E0E6EB] text-[13px] font-[500] text-[#44525C] hover:bg-[#F9FAFB] transition-colors cursor-pointer"
+          >
+            <FiDownload /> Eksport
+          </button>
+          <button
+            onClick={() => alert("Umumiy jadval tez orada qo'shiladi")}
+            className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-[10px] border border-[#E0E6EB] text-[13px] font-[500] text-[#44525C] hover:bg-[#F9FAFB] transition-colors cursor-pointer"
+          >
+            <FiCalendar /> Umumiy jadval
+          </button>
+          <button
+            onClick={() => setIsModalOpen(true)}
+            className="flex gap-2 text-[14px] md:text-[16px] items-center py-2.5 px-4 rounded-[10px] text-white cursor-pointer bg-[#0D9488] hover:bg-[#0C8377] transition-colors"
+          >
+            <FiPlus className="md:text-[20px] text-[14px] hidden md:block" />
+            Xodim qo'shish
+          </button>
+        </div>
+      </div>
+
+      {/* Stat cards */}
+      <div className="grid md:grid-cols-4 grid-cols-2 gap-3 mb-4">
+        <div className="border bg-[#fff] border-[#E8E8E8] rounded-[10px] px-4 py-3 flex items-center justify-between">
+          <div>
+            <p className="text-[11px] text-[#8F99A3]">Jami xodimlar</p>
+            <p className="text-[18px] font-[700]">{staffStats?.total ?? "—"}</p>
+          </div>
+          <span className="text-[11px] font-[600] text-[#0D9488] bg-[#E9FBF4] px-2 py-1 rounded-full">
+            {employeesData?.data?.filter(
+              (e: EmployeeResponseType) => e.status === "active"
+            ).length ?? 0}{" "}
+            ishda
+          </span>
+        </div>
+        <div className="border bg-[#fff] border-[#E8E8E8] rounded-[10px] px-4 py-3">
+          <p className="text-[11px] text-[#8F99A3]">Shifokorlar</p>
+          <p className="text-[18px] font-[700]">{staffStats?.doctor_count ?? "—"}</p>
+        </div>
+        <div className="border bg-[#fff] border-[#E8E8E8] rounded-[10px] px-4 py-3">
+          <p className="text-[11px] text-[#8F99A3]">Registratorlar</p>
+          <p className="text-[18px] font-[700]">{staffStats?.registrator_count ?? "—"}</p>
+        </div>
+        <div className="border bg-[#fff] border-[#E8E8E8] rounded-[10px] px-4 py-3">
+          <p className="text-[11px] text-[#8F99A3]">Administratorlar</p>
+          <p className="text-[18px] font-[700]">{staffStats?.admin_count ?? "—"}</p>
+        </div>
       </div>
 
       {/* Search + filter */}
-      <div className="px-6 py-6 border border-[#E0E6EB] rounded-[10px] flex md:flex-row flex-col items-center gap-3 mt-4">
+      <div className="px-6 py-5 border border-[#E0E6EB] rounded-[10px] flex md:flex-row flex-col items-center gap-3 mb-4">
         <Form className="md:flex-1 !w-full">
           <Form.Item name="search" className="!m-0 relative flex-1">
             <AutoComplete
               options={options}
               onSelect={handleSelect}
               onSearch={handleSearch}
-              placeholder="Xodim qidiring..."
+              placeholder="Ism yoki telefon bo'yicha qidiring..."
               className="!w-full !h-[40px]"
               notFoundContent="Xodim topilmadi!"
             />
           </Form.Item>
         </Form>
-        <div className="flex items-center gap-2">
-          {["", "admin", "doctor", "registrator"].map((r) => (
+        <div className="flex items-center gap-2 flex-wrap">
+          {["", "doctor", "registrator", "admin"].map((r) => (
             <button
               key={r}
               onClick={() => setRole(r)}
               className={`px-3 py-2 border border-[#eaeaea] rounded-[6px] ${
-                role === r ? "bg-[#2D80FF] text-white " : "text-black"
+                role === r ? "bg-[#0D9488] text-white border-[#0D9488]" : "text-black"
               } cursor-pointer text-[14px] md:h-[41px] hover:shadow-md transition-all duration-150`}
             >
               {r === ""
-                ? "Barchasi"
+                ? `Barchasi ${staffStats?.total ?? ""}`
                 : r === "doctor"
-                ? "Shifokorlar"
+                ? `Shifokorlar ${staffStats?.doctor_count ?? ""}`
                 : r === "registrator"
-                ? "Xodimlar"
-                : "Adminlar"}
+                ? `Registratorlar ${staffStats?.registrator_count ?? ""}`
+                : `Adminlar ${staffStats?.admin_count ?? ""}`}
             </button>
           ))}
+        </div>
+        <Select
+          value={empStatus || undefined}
+          onChange={(v) => setEmpStatus(v || "")}
+          placeholder="Barcha holatlar"
+          allowClear
+          className="!w-full md:!w-[170px] !h-[40px]"
+          options={[
+            { value: "active", label: "Faol" },
+            { value: "inactive", label: "Nofaol" },
+          ]}
+        />
+        <div className="flex items-center gap-1 border border-[#E0E6EB] rounded-[8px] p-1">
+          <button
+            onClick={() => setViewMode("grid")}
+            className={`w-[32px] h-[32px] flex items-center justify-center rounded-[6px] cursor-pointer ${
+              viewMode === "grid" ? "bg-[#0D9488] text-white" : "text-[#8F99A3]"
+            }`}
+          >
+            <FiGrid />
+          </button>
+          <button
+            onClick={() => setViewMode("list")}
+            className={`w-[32px] h-[32px] flex items-center justify-center rounded-[6px] cursor-pointer ${
+              viewMode === "list" ? "bg-[#0D9488] text-white" : "text-[#8F99A3]"
+            }`}
+          >
+            <FiList />
+          </button>
         </div>
       </div>
 
       <div className="mt-[14px]">
-        {selectedEmployee ? (
-          // faqat tanlangan bitta xodimni chiqarish
-          <Link
-            key={selectedEmployee.id}
-            to={`${selectedEmployee.id}`}
-            className="px-6 py-4 border border-[#E0E6EB] flex items-center justify-between rounded-[10px] bg-[#fff] mb-3 hover:shadow-md transition-all duration-150"
-          >
-            <div className="flex items-center gap-3">
-              <div className="md:w-[50px] md:h-[50px] w-[35px] h-[35px] flex justify-center items-center rounded-full bg-[#E7F0FA] text-[#2A81D8] md:text-[24px] text-[20px]">
-                <LuUser />
-              </div>
-              <div>
-                <h3 className="md:text-[18px] text-[14px] font-[600]">
-                  {selectedEmployee.fio}
-                </h3>
-                <p className="md:text-[14px] text-[12px] text-[#8b8b8b] flex gap-2">
-                  <BsTelephone /> {selectedEmployee.phone}
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <button className="px-2.5 py-1 rounded-full text-[#5AA6F2] bg-[#EEF6FD] flex items-center text-[14px] gap-1.5">
-                <FaUserDoctor /> {selectedEmployee.role}
-              </button>
-            </div>
-          </Link>
+        {(selectedEmployee ? [selectedEmployee] : employeesData?.data || [])
+          .length === 0 ? (
+          <div className="px-6 py-10 border border-[#E0E6EB] rounded-[10px] bg-[#fff] text-center text-[#8F99A3]">
+            Xodim topilmadi
+          </div>
+        ) : viewMode === "list" ? (
+          (selectedEmployee ? [selectedEmployee] : employeesData?.data || []).map(
+            (item: EmployeeResponseType) => (
+              <Link
+                key={item.id}
+                to={`${item.id}`}
+                className="px-6 py-4 border border-[#E0E6EB] flex items-center justify-between rounded-[10px] bg-[#fff] mb-3 hover:shadow-md transition-all duration-150"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="md:w-[50px] md:h-[50px] w-[35px] h-[35px] flex justify-center items-center rounded-full bg-[#E7F0FA] text-[#2A81D8] md:text-[24px] text-[20px]">
+                    <LuUser />
+                  </div>
+                  <div>
+                    <h3 className="md:text-[18px] text-[14px] font-[600]">
+                      {item.fio}
+                    </h3>
+                    <p className="md:text-[14px] text-[12px] text-[#8b8b8b] flex gap-2">
+                      <BsTelephone /> {item.phone}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <button className="px-2.5 py-1 rounded-full text-[#5AA6F2] bg-[#EEF6FD] flex items-center text-[14px] gap-1.5">
+                    <FaUserDoctor /> {ROLE_LABEL[item.role] || item.role}
+                  </button>
+                </div>
+              </Link>
+            )
+          )
         ) : (
-          employeesData?.data?.map((item: any) => (
-            <Link
-              key={item.id}
-              to={`${item.id}`}
-              className="px-6 py-4 border border-[#E0E6EB] flex items-center justify-between rounded-[10px] bg-[#fff] mb-3 hover:shadow-md transition-all duration-150"
-            >
-              <div className="flex items-center gap-3">
-                <div className="md:w-[50px] md:h-[50px] w-[35px] h-[35px] flex justify-center items-center rounded-full bg-[#E7F0FA] text-[#2A81D8] md:text-[24px] text-[20px]">
-                  <LuUser />
-                </div>
-                <div>
-                  <h3 className="md:text-[18px] text-[14px] font-[600]">
-                    {item.fio}
-                  </h3>
-                  <p className="md:text-[14px] text-[12px] text-[#8b8b8b] flex gap-2">
-                    <BsTelephone /> {item.phone}
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <button className="px-2.5 py-1 rounded-full text-[#5AA6F2] bg-[#EEF6FD] flex items-center text-[14px] gap-1.5">
-                  <FaUserDoctor /> {item.role}
-                </button>
-              </div>
-            </Link>
-          ))
+          <div className="grid md:grid-cols-3 grid-cols-1 gap-3">
+            {(selectedEmployee ? [selectedEmployee] : employeesData?.data || []).map(
+              (item: EmployeeResponseType) => {
+                const avatarColor = getAvatarColor(item.id);
+                const isActive = item.status === "active";
+                const isAdmin = item.role === "admin";
+
+                return (
+                  <div
+                    key={item.id}
+                    className="border bg-[#fff] border-[#E8E8E8] rounded-[10px] p-4"
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="relative shrink-0">
+                          <div
+                            className="w-[46px] h-[46px] flex items-center justify-center rounded-full font-[700] text-[14px]"
+                            style={{
+                              backgroundColor: avatarColor.bg,
+                              color: avatarColor.text,
+                            }}
+                          >
+                            {getInitials(item.fio)}
+                          </div>
+                          <span
+                            className={`absolute bottom-0 right-0 w-[10px] h-[10px] rounded-full border-2 border-white ${
+                              isActive ? "bg-[#1DC981]" : "bg-[#A9B2B8]"
+                            }`}
+                          />
+                        </div>
+                        <div>
+                          <h3 className="text-[14px] font-[600]">{item.fio}</h3>
+                          <p className="text-[12px] text-[#8F99A3]">
+                            {item.role === "doctor"
+                              ? item.specialty || "Shifokor"
+                              : item.role === "registrator"
+                              ? "Qabulxona"
+                              : "Administrator"}
+                          </p>
+                          <span
+                            className={`inline-block mt-1 text-[10px] font-[600] px-2 py-0.5 rounded-full ${
+                              ROLE_BADGE_COLOR[item.role] || "bg-[#F1F5F4] text-[#44525C]"
+                            }`}
+                          >
+                            {ROLE_LABEL[item.role] || item.role}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="border-t border-[#F0F2F3] mt-3 pt-3 flex items-center justify-between text-[12px] text-[#44525C]">
+                      <span className="flex items-center gap-1.5">
+                        <BsTelephone className="text-[#8F99A3]" /> {item.phone}
+                      </span>
+                      <span
+                        className={`text-[11px] font-[600] px-2 py-0.5 rounded-full ${
+                          isActive
+                            ? "bg-[#E9FBF4] text-[#0D9488]"
+                            : "bg-[#F1F5F4] text-[#64727B]"
+                        }`}
+                      >
+                        {isActive ? "Ishda" : "Nofaol"}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-2 mt-3">
+                      {isAdmin ? (
+                        <>
+                          <div className="bg-[#F9FAFB] rounded-[8px] px-2 py-2 text-center">
+                            <p className="text-[10px] text-[#8F99A3]">Xodimlar</p>
+                            <p className="text-[13px] font-[700]">
+                              {staffStats?.total ?? "—"}
+                            </p>
+                          </div>
+                          <div className="bg-[#F9FAFB] rounded-[8px] px-2 py-2 text-center">
+                            <p className="text-[10px] text-[#8F99A3]">Bemorlar</p>
+                            <p className="text-[13px] font-[700]">
+                              {clinicStats?.data?.patients_stats?.total_patients ?? "—"}
+                            </p>
+                          </div>
+                          <div className="bg-[#F9FAFB] rounded-[8px] px-2 py-2 text-center">
+                            <p className="text-[10px] text-[#8F99A3]">Kirish</p>
+                            <p className="text-[11px] font-[700]">
+                              {formatLastLogin(item.last_login)}
+                            </p>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div className="bg-[#F9FAFB] rounded-[8px] px-2 py-2 text-center">
+                            <p className="text-[10px] text-[#8F99A3]">Bugun</p>
+                            <p className="text-[13px] font-[700]">
+                              {item.today_count ?? 0} bemor
+                            </p>
+                          </div>
+                          <div className="bg-[#F9FAFB] rounded-[8px] px-2 py-2 text-center col-span-2">
+                            <p className="text-[10px] text-[#8F99A3]">Shu oy</p>
+                            <p className="text-[13px] font-[700]">
+                              {item.month_count ?? 0} bemor
+                            </p>
+                          </div>
+                        </>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-2 mt-3">
+                      <Link
+                        to={`${item.id}`}
+                        className="flex-1 flex items-center justify-center gap-1.5 border border-[#E0E6EB] rounded-[8px] py-2 text-[12px] font-[500] text-[#44525C] hover:bg-[#F9FAFB]"
+                      >
+                        <LuUser /> Profil
+                      </Link>
+                      <button
+                        onClick={() => alert("Ish jadvali tez orada qo'shiladi")}
+                        className="flex-1 flex items-center justify-center gap-1.5 bg-[#E9FBF4] rounded-[8px] py-2 text-[12px] font-[500] text-[#0D9488] cursor-pointer"
+                      >
+                        <FiCalendar /> Ish jadvali
+                      </button>
+                    </div>
+                  </div>
+                );
+              }
+            )}
+          </div>
         )}
 
         {/* Pagination */}
         {employeesData?.meta?.total_items > 10 && !selectedEmployee && (
-          <div className="px-6 py-4 border border-[#E0E6EB] flex items-center justify-end rounded-[10px] bg-[#fff] mb-5">
+          <div className="px-6 py-4 border border-[#E0E6EB] flex items-center justify-end rounded-[10px] bg-[#fff] mb-5 mt-3">
             <Pagination
               current={page}
               pageSize={10}

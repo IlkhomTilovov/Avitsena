@@ -8,7 +8,7 @@ from drf_spectacular.utils import (
 from drf_spectacular.types import OpenApiTypes
 from apps.shared.response import CustomResponse
 from apps.shared.pagination import CustomPagination
-from apps.users.models import CustomUser
+from apps.users.models import CustomUser, Doctor
 from apps.api.v1.serializers import (
     LoginSerializer,
     UserCreatSerializer,
@@ -20,7 +20,8 @@ from apps.api.v1.serializers import (
     UserPasswordSetSerializer,
     UserPasswordChangeSerializer
 )
-from django.db.models import Prefetch, Q
+from django.db.models import Prefetch, Q, OuterRef, Subquery, Count
+from django.utils import timezone
 from apps.users.choices import UserStatus
 from apps.shared.permissions import IsAdmin, IsRegistratorOrAdmin
 from rest_framework.exceptions import NotFound
@@ -245,13 +246,54 @@ class UserListCreateView(APIView):
 
         search = query_params.get('search')
 
+        emp_status = query_params.get('status')
+
+        today = timezone.now().date()
+
+        start_of_month = today.replace(day=1)
+
+        category_subquery = Doctor.objects \
+            .filter(user=OuterRef('pk')) \
+            .values('services__category__name')[:1]
+
         queryset = CustomUser.objects \
             .filter(clinic=self.request.user.clinic) \
+            .annotate(
+                specialty=Subquery(category_subquery),
+                today_count=(
+                    Count(
+                        'doctor_visits',
+                        filter=Q(doctor_visits__created_at__date=today),
+                        distinct=True
+                    ) +
+                    Count(
+                        'registered_visits',
+                        filter=Q(registered_visits__created_at__date=today),
+                        distinct=True
+                    )
+                ),
+                month_count=(
+                    Count(
+                        'doctor_visits',
+                        filter=Q(doctor_visits__created_at__date__gte=start_of_month),
+                        distinct=True
+                    ) +
+                    Count(
+                        'registered_visits',
+                        filter=Q(registered_visits__created_at__date__gte=start_of_month),
+                        distinct=True
+                    )
+                )
+            ) \
             .order_by('-created_at')
 
         if role:
 
             queryset = queryset.filter(role=role)
+
+        if emp_status:
+
+            queryset = queryset.filter(status=emp_status)
 
         if search:
 
