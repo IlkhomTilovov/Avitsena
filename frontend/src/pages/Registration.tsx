@@ -1,4 +1,3 @@
-import { MdOutlinePersonAddAlt } from "react-icons/md";
 import {
   AutoComplete,
   DatePicker,
@@ -12,10 +11,70 @@ import {
 import dayjs, { Dayjs } from "dayjs";
 import { useMutation, useQuery, useQueryClient } from "react-query";
 import { OneMedAdmin } from "../queries/query";
-import { LoadingOutlined } from "@ant-design/icons";
+import { LoadingOutlined, CheckCircleFilled } from "@ant-design/icons";
 import { useState } from "react";
+import { FiUpload, FiCamera } from "react-icons/fi";
 
 import "../App.css";
+
+const BLOOD_GROUPS = ["O+", "O-", "A+", "A-", "B+", "B-", "AB+", "AB-"];
+
+function GenderToggle({
+  value,
+  onChange,
+}: {
+  value?: string;
+  onChange?: (val: string) => void;
+}) {
+  return (
+    <div className="flex items-center gap-2">
+      {[
+        { value: "male", label: "Erkak" },
+        { value: "female", label: "Ayol" },
+      ].map((opt) => (
+        <button
+          key={opt.value}
+          type="button"
+          onClick={() => onChange?.(opt.value)}
+          className={`flex-1 h-[40px] rounded-[8px] border text-[14px] font-[500] cursor-pointer transition-colors ${
+            value === opt.value
+              ? "border-[#0D9488] bg-[#E9FBF4] text-[#0D9488]"
+              : "border-[#E0E6EB] text-[#44525C] hover:bg-[#F9FAFB]"
+          }`}
+        >
+          {opt.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function BloodGroupGrid({
+  value,
+  onChange,
+}: {
+  value?: string;
+  onChange?: (val: string) => void;
+}) {
+  return (
+    <div className="grid grid-cols-4 gap-2">
+      {BLOOD_GROUPS.map((bg) => (
+        <button
+          key={bg}
+          type="button"
+          onClick={() => onChange?.(bg)}
+          className={`h-[40px] rounded-[8px] border text-[13px] font-[600] cursor-pointer transition-colors ${
+            value === bg
+              ? "border-[#E24C4C] bg-[#FDEDED] text-[#E24C4C]"
+              : "border-[#E0E6EB] text-[#44525C] hover:bg-[#F9FAFB]"
+          }`}
+        >
+          {bg}
+        </button>
+      ))}
+    </div>
+  );
+}
 
 // ------- Types ---------
 type pasport = {
@@ -130,6 +189,9 @@ export type Category = {
 export default function Registration() {
   const [form] = Form.useForm();
   const [docType, setDocType] = useState("");
+  const watchedValues = Form.useWatch([], form) as
+    | Partial<sendResponseValuesType>
+    | undefined;
   const queryClient = useQueryClient();
   const [selectedPatientId, setSelectedPatientId] = useState<string | null>(
     null
@@ -189,21 +251,29 @@ export default function Registration() {
   );
 
   // Yangi bemor qo‘shish
+  // Saqlab, darhol qabulga yozish uchun bayroq
+  const [pendingVisitAfterSave, setPendingVisitAfterSave] = useState(false);
+
   const { mutate: addPatientMutate, isLoading: addPatientLoading } =
     useMutation<PatientResponse, Error, PatientRequest>(
       (obj) => OneMedAdmin.addPatient(obj),
       {
-        onSuccess: () => {
+        onSuccess: (data) => {
           queryClient.invalidateQueries();
-          // showMessage("Yangi bemor muvaffaqqiyatli qo'shildi!");
-          // ✅ Forma tozalash
 
-          form.resetFields();
-          setSelectedPatientId(null); // ✅ yangi ID saqlaymiz
-          setIsFormDisabled(false); // yangi bemorda forma tahrirlanadi
+          if (pendingVisitAfterSave) {
+            setSelectedPatientId(data.data.id);
+            setIsFormDisabled(true);
+            setPendingVisitAfterSave(false);
+          } else {
+            form.resetFields();
+            setSelectedPatientId(null); // ✅ yangi ID saqlaymiz
+            setIsFormDisabled(false); // yangi bemorda forma tahrirlanadi
+          }
           openNotificationWithIcon("success", "Yangi bemor qo‘shildi");
         },
         onError: (err) => {
+          setPendingVisitAfterSave(false);
           openNotificationWithIcon("error", err.message);
           // showMessage("Yangi bemor muvaffaqqiyatli qo'shildi!");
           // error("Xatolik yuz berdi!");
@@ -216,15 +286,23 @@ export default function Registration() {
     useMutation<PatientResponse, Error, { id: string; obj: PatientRequest }>(
       ({ id, obj }) => OneMedAdmin.updatePatient(id, obj),
       {
-        onSuccess: () => {
+        onSuccess: (data) => {
           queryClient.invalidateQueries();
-          form.resetFields();
-          setIsFormDisabled(false);
-          setSelectedPatientId(null);
+
+          if (pendingVisitAfterSave) {
+            setSelectedPatientId(data.data.id);
+            setIsFormDisabled(true);
+            setPendingVisitAfterSave(false);
+          } else {
+            form.resetFields();
+            setIsFormDisabled(false);
+            setSelectedPatientId(null);
+          }
           openNotificationWithIcon("success", "Bemor yangilandi");
           // success("Bemor muvaffaqqiyatli yangilandi!");
         },
         onError: () => {
+          setPendingVisitAfterSave(false);
           // error("Xatolik yuz berdi!");
         },
       }
@@ -234,6 +312,7 @@ export default function Registration() {
   const handleSendPatientValues = (value: sendResponseValuesType) => {
     const object: PatientRequest = {
       ...value,
+      phone: value.phone ? `+998${value.phone.replace(/^\+?998/, "")}` : "",
       date_of_birth: value.date_of_birth?.format("YYYY-MM-DD"),
       pasport: value.pasport
         ? {
@@ -303,7 +382,9 @@ export default function Registration() {
         first_name: data.data.first_name,
         last_name: data.data.last_name,
         middle_name: data.data.middle_name,
-        phone: data.data.phone,
+        phone: data.data.phone
+          ? data.data.phone.replace(/^\+?998/, "")
+          : data.data.phone,
         gender: data.data.gender,
         blood_group: data.data.blood_group,
         document_type: data.data.document_type,
@@ -426,6 +507,32 @@ export default function Registration() {
   //   );
   // }
 
+  // ------- Progress / derived values -------
+  const requiredComplete =
+    !!watchedValues?.first_name &&
+    !!watchedValues?.last_name &&
+    !!watchedValues?.date_of_birth;
+
+  const computedAge = watchedValues?.date_of_birth
+    ? dayjs().diff(dayjs(watchedValues.date_of_birth), "year")
+    : null;
+
+  const importantFieldsList = [
+    watchedValues?.middle_name,
+    watchedValues?.phone,
+    watchedValues?.gender,
+    watchedValues?.blood_group,
+    watchedValues?.document_type,
+  ];
+  const importantFilledCount = importantFieldsList.filter(Boolean).length;
+
+  const heightNum = Number(watchedValues?.height);
+  const weightNum = Number(watchedValues?.weight);
+  const computedBmi =
+    heightNum > 0 && weightNum > 0
+      ? (weightNum / (heightNum / 100) ** 2).toFixed(1)
+      : null;
+
   return (
     <div className="w-full flex justify-center py-2 flex-col pr-[10px] md:pr-auto ">
       {contextHolder}
@@ -450,6 +557,36 @@ export default function Registration() {
         </Form>
       </div>
 
+      {/* Sarlavha va yordamchi tugmalar */}
+      <div className="flex md:flex-row flex-col md:items-center items-start justify-between gap-3 mb-3">
+        <div>
+          <h1 className="text-[22px] font-[700]">
+            {selectedPatientId
+              ? "Bemor ma'lumotlarini yangilash"
+              : "Bemorni ro'yxatga olish"}
+          </h1>
+          <p className="text-[13px] text-[#8F99A3]">
+            Yangi bemor ma'lumotlarini kiriting. * belgili maydonlar majburiy
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => alert("Excel'dan import tez orada qo'shiladi")}
+            className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-[10px] border border-[#E0E6EB] text-[13px] font-[500] text-[#44525C] hover:bg-[#F9FAFB] transition-colors cursor-pointer"
+          >
+            <FiUpload /> Excel'dan import
+          </button>
+          <button
+            type="button"
+            onClick={() => alert("Pasportni skanerlash tez orada qo'shiladi")}
+            className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-[10px] border border-[#E0E6EB] text-[13px] font-[500] text-[#44525C] hover:bg-[#F9FAFB] transition-colors cursor-pointer"
+          >
+            <FiCamera /> Pasportni skanerlash
+          </button>
+        </div>
+      </div>
+
       {/* Forma */}
       <Form
         form={form}
@@ -458,26 +595,40 @@ export default function Registration() {
         className="border md:w-full w-full border-[#e3e3e3] rounded-[20px]"
         disabled={isFormDisabled} // ✅ shu joyda disable
       >
-        <div className="flex items-center md:text-[22px] text-[18px] font-[600] gap-2 bg-[#F4FCF9] rounded-t-[20px] px-[24px] py-[10px]">
-          <MdOutlinePersonAddAlt className="text-[#2B7FFF] md:text-[25px] text-[20px] mt-[1px]" />
-          <h2>
-            {selectedPatientId
-              ? "Bemor ma’lumotlarini yangilash"
-              : "Bemorni ro'yxatga olish"}
-          </h2>
-        </div>
         <div className="px-[24px] py-4">
-          <h3 className="md:text-[18px] text-[14px] text-red-500 font-[500]">
-            Majburiy ma'lumotlar
-          </h3>
-          <div className="grid grid-cols-6 gap-3">
+          <div className="flex items-center justify-between mb-1">
+            <div className="flex items-center gap-2">
+              <span className="w-[26px] h-[26px] rounded-full bg-[#E9FBF4] text-[#0D9488] text-[12px] font-[700] flex items-center justify-center">
+                1
+              </span>
+              <div>
+                <h3 className="text-[15px] font-[600]">Majburiy ma'lumotlar</h3>
+                <p className="text-[11px] text-[#8F99A3]">
+                  Bemorni aniqlash uchun zarur
+                </p>
+              </div>
+            </div>
+            {requiredComplete && (
+              <span className="flex items-center gap-1 text-[11px] font-[600] text-[#0D9488] bg-[#E9FBF4] px-2 py-1 rounded-full">
+                <CheckCircleFilled /> To'ldirildi
+              </span>
+            )}
+          </div>
+          <div className="grid grid-cols-6 gap-3 mt-3">
             <Form.Item
               name="first_name"
               label="Ism"
               rules={[{ required: true, message: "Ismni kiriting" }]}
               className="md:col-span-2 col-span-6"
             >
-              <Input className="w-full !h-[40px]" />
+              <Input
+                className="w-full !h-[40px]"
+                suffix={
+                  watchedValues?.first_name ? (
+                    <CheckCircleFilled className="text-[#1DC981]" />
+                  ) : null
+                }
+              />
             </Form.Item>
             <Form.Item
               name="last_name"
@@ -485,13 +636,27 @@ export default function Registration() {
               rules={[{ required: true, message: "Familyani kiriting" }]}
               className="md:col-span-2 col-span-6"
             >
-              <Input className="w-full  !h-[40px]" />
+              <Input
+                className="w-full  !h-[40px]"
+                suffix={
+                  watchedValues?.last_name ? (
+                    <CheckCircleFilled className="text-[#1DC981]" />
+                  ) : null
+                }
+              />
             </Form.Item>
             <Form.Item
               name="date_of_birth"
               label="Tug'ilgan sana"
               rules={[{ required: true, message: "Tug'ilgan sanani kiriting" }]}
               className="md:col-span-2 col-span-6"
+              extra={
+                computedAge !== null ? (
+                  <span className="text-[11px] text-[#0D9488]">
+                    <CheckCircleFilled /> {computedAge} yosh
+                  </span>
+                ) : undefined
+              }
             >
               <DatePicker className="w-full !h-[40px]" />
             </Form.Item>
@@ -499,10 +664,23 @@ export default function Registration() {
         </div>
 
         <div className="px-[24px] pb-4">
-          <h3 className="md:text-[18px] text-[14px] text-red-500 font-[500]">
-            Muhim ma'lumotlar
-          </h3>
-          <div className="grid grid-cols-6 gap-3">
+          <div className="flex items-center justify-between mb-1">
+            <div className="flex items-center gap-2">
+              <span className="w-[26px] h-[26px] rounded-full bg-[#FEF6E6] text-[#B5820A] text-[12px] font-[700] flex items-center justify-center">
+                2
+              </span>
+              <div>
+                <h3 className="text-[15px] font-[600]">Muhim ma'lumotlar</h3>
+                <p className="text-[11px] text-[#8F99A3]">
+                  Aloqa va tibbiy ko'rsatkichlar
+                </p>
+              </div>
+            </div>
+            <span className="text-[11px] font-[600] text-[#8F99A3] bg-[#F1F5F4] px-2 py-1 rounded-full">
+              {importantFilledCount} / 5
+            </span>
+          </div>
+          <div className="grid grid-cols-6 gap-3 mt-3">
             <Form.Item
               name="middle_name"
               label="Otasining ismi"
@@ -515,40 +693,10 @@ export default function Registration() {
               label="Telefon raqam"
               className="md:col-span-2 col-span-6"
             >
-              <Input placeholder="+998991234567" className="w-full !h-[40px]" />
-            </Form.Item>
-
-            <Form.Item
-              name="blood_group"
-              label="Qon guruhi"
-              className="md:col-span-2 col-span-6"
-            >
-              <Select
-                className="w-full  !h-[40px]"
-                options={[
-                  { value: "A+", label: "A+" },
-                  { value: "A-", label: "A-" },
-                  {
-                    value: "B+",
-                    label: "B+",
-                  },
-                  {
-                    value: "B-",
-                    label: "B-",
-                  },
-                  {
-                    value: "AB+",
-                    label: "AB+",
-                  },
-                  {
-                    value: "AB-",
-                    label: "AB-",
-                  },
-                  {
-                    value: "O+",
-                    label: "O-",
-                  },
-                ]}
+              <Input
+                addonBefore="+998"
+                placeholder="991234567"
+                className="w-full !h-[40px]"
               />
             </Form.Item>
 
@@ -558,22 +706,25 @@ export default function Registration() {
               className="remove-required md:col-span-2 col-span-6"
               rules={[{ required: true, message: "Jinsini kiriting" }]}
             >
-              <Select
-                className="w-full  !h-[40px]"
-                options={[
-                  { value: "male", label: "Erkak" },
-                  { value: "female", label: "Ayol" },
-                ]}
-              />
+              <GenderToggle />
+            </Form.Item>
+
+            <Form.Item
+              name="blood_group"
+              label="Qon guruhi"
+              className="md:col-span-4 col-span-6"
+            >
+              <BloodGroupGrid />
             </Form.Item>
 
             <Form.Item
               name="document_type"
-              label="Document turi"
+              label="Hujjat turi"
               className="md:col-span-2 col-span-6"
             >
               <Select
                 className="w-full  !h-[40px]"
+                placeholder="Tanlang"
                 onChange={handleDocType}
                 options={[
                   { value: "pasport", label: "Pasport" },
@@ -586,7 +737,6 @@ export default function Registration() {
               />
             </Form.Item>
           </div>
-
           {/* pasport  */}
           {docType === "pasport" ? (
             <div>
@@ -724,10 +874,23 @@ export default function Registration() {
         </div>
 
         <div className="px-[24px] pb-4">
-          <h3 className="md:text-[18px] text-[14px] font-[600]">
-            Qo'shimcha ma'lumotlar
-          </h3>
-          <div className="grid grid-cols-6 gap-3">
+          <div className="flex items-center justify-between mb-1">
+            <div className="flex items-center gap-2">
+              <span className="w-[26px] h-[26px] rounded-full bg-[#EAF1FF] text-[#2D6FE0] text-[12px] font-[700] flex items-center justify-center">
+                3
+              </span>
+              <div>
+                <h3 className="text-[15px] font-[600]">Qo'shimcha ma'lumotlar</h3>
+                <p className="text-[11px] text-[#8F99A3]">
+                  Manzil va jismoniy ko'rsatkichlar (ixtiyoriy)
+                </p>
+              </div>
+            </div>
+            <span className="text-[11px] font-[600] text-[#8F99A3] bg-[#F1F5F4] px-2 py-1 rounded-full">
+              Ixtiyoriy
+            </span>
+          </div>
+          <div className="grid grid-cols-6 gap-3 mt-3">
             <Form.Item
               name="country"
               label="Davlati"
@@ -758,17 +921,33 @@ export default function Registration() {
               label="Bo'yi"
               className="md:col-span-2 col-span-6"
             >
-              <Input className="w-full  !h-[40px]" />
+              <Input suffix="sm" className="w-full  !h-[40px]" />
             </Form.Item>
             <Form.Item
               name="weight"
               label="Og'irligi"
               className="md:col-span-2 col-span-6"
             >
-              <Input className="w-full  !h-[40px]" />
+              <Input suffix="kg" className="w-full  !h-[40px]" />
+            </Form.Item>
+            <Form.Item
+              label="Tana massasi indeksi (BMI)"
+              className="md:col-span-2 col-span-6"
+            >
+              <Input
+                disabled
+                value={computedBmi ?? ""}
+                placeholder="Avtomatik hisoblanadi"
+                className="w-full !h-[40px]"
+              />
             </Form.Item>
           </div>
-          <div className="md:px-[24px] pb-4 flex gap-4 justify-end">
+
+          <p className="text-[11px] text-[#8F99A3] mb-3">
+            Ma'lumotlar xavfsiz saqlanadi
+          </p>
+
+          <div className="md:px-[24px] pb-4 flex flex-wrap gap-3 justify-end">
             <button
               onClick={() => form.resetFields()}
               className="md:px-[30px] bg-[#d7d7d753] hover:shadow-md transition-all duration-150 py-2.5 text-[12px] md:text-[16px] rounded-md text-black font-[500] cursor-pointer"
@@ -797,23 +976,43 @@ export default function Registration() {
                 O'zgartirish
               </div>
             ) : (
-              <button
-                type="submit"
-                className="md:px-[30px] hover:shadow-md transition-all duration-150 bg-[#2B7FFF] text-[12px] md:text-[16px] rounded-md text-white font-[500] cursor-pointer !w-[150px] flex justify-center items-center"
-              >
-                {selectedPatientId ? (
-                  addPatientLoading || updatePatientLoading ? (
-                    <Spin
-                      indicator={<LoadingOutlined spin />}
-                      className="!text-white"
-                    />
+              <>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPendingVisitAfterSave(true);
+                    form.submit();
+                  }}
+                  className="md:px-[30px] hover:shadow-md transition-all duration-150 border border-[#0D9488] text-[#0D9488] text-[12px] md:text-[16px] rounded-md font-[500] cursor-pointer flex justify-center items-center gap-1.5"
+                >
+                  {pendingVisitAfterSave &&
+                  (addPatientLoading || updatePatientLoading) ? (
+                    <Spin indicator={<LoadingOutlined spin />} />
                   ) : (
-                    "Yangilash"
-                  )
+                    <>
+                      <CheckCircleFilled /> Qo'shib, qabulga yozish
+                    </>
+                  )}
+                </button>
+                <button
+                  type="submit"
+                  className="md:px-[30px] hover:shadow-md transition-all duration-150 bg-[#0D9488] text-[12px] md:text-[16px] rounded-md text-white font-[500] cursor-pointer !w-[150px] flex justify-center items-center"
+                >
+                  {selectedPatientId ? (
+                    !pendingVisitAfterSave &&
+                    (addPatientLoading || updatePatientLoading) ? (
+                      <Spin
+                        indicator={<LoadingOutlined spin />}
+                        className="!text-white"
+                      />
+                    ) : (
+                      "Yangilash"
+                    )
                 ) : (
-                  "Qo'shsih"
+                  "Bemorni qo'shish"
                 )}
-              </button>
+                </button>
+              </>
             )}
           </div>
         </div>
