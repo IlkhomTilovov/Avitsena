@@ -1,7 +1,9 @@
-import { FiPlus, FiBell, FiChevronDown } from "react-icons/fi";
+import { FiPlus, FiBell, FiChevronDown, FiUser, FiSettings, FiLogOut } from "react-icons/fi";
+import { Dropdown } from "antd";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useCreateContext } from "../context/ContextApi";
 import { useEffect, useState } from "react";
+import SecureStorage from "react-secure-storage";
 
 const weekDays = [
   "Yakshanba",
@@ -84,6 +86,14 @@ export default function NavBar() {
       ? roleLabels[getUserProfileData.data.role] || "Administrator"
       : "Administrator";
 
+  const handleLogout = () => {
+    SecureStorage.removeItem("accessToken");
+    SecureStorage.removeItem("refreshToken");
+    SecureStorage.removeItem("userSettingData");
+    localStorage.removeItem("fio");
+    navigate("/", { replace: true });
+  };
+
   return (
     <div className="flex items-center justify-between w-full py-3 border-b border-[#ECEFF1] bg-white/70 backdrop-blur-sm pr-[10px] md:pr-auto gap-4">
       <div className="shrink-0">
@@ -118,16 +128,44 @@ export default function NavBar() {
           <FiPlus /> Yangi qabul
         </button>
 
-        <div className="flex items-center gap-2 pl-2 md:border-l border-[#ECEFF1]">
-          <div className="w-[36px] h-[36px] rounded-full bg-[#0D9488] text-white flex items-center justify-center text-[13px] font-[600]">
-            {getInitials(fio || "U F") || "U"}
+        <Dropdown
+          trigger={["click"]}
+          menu={{
+            items: [
+              {
+                key: "profile",
+                label: "Mening profilim",
+                icon: <FiUser />,
+                onClick: () => navigate("/settings"),
+              },
+              {
+                key: "settings",
+                label: "Sozlamalar",
+                icon: <FiSettings />,
+                onClick: () => navigate("/settings"),
+              },
+              { type: "divider" },
+              {
+                key: "logout",
+                label: "Chiqish",
+                icon: <FiLogOut />,
+                danger: true,
+                onClick: handleLogout,
+              },
+            ],
+          }}
+        >
+          <div className="flex items-center gap-2 pl-2 md:border-l border-[#ECEFF1] cursor-pointer select-none">
+            <div className="w-[36px] h-[36px] rounded-full bg-[#0D9488] text-white flex items-center justify-center text-[13px] font-[600]">
+              {getInitials(fio || "U F") || "U"}
+            </div>
+            <div className="hidden md:block">
+              <p className="text-[13px] font-[600] leading-tight">{fio}</p>
+              <p className="text-[11px] text-[#8F99A3]">{role}</p>
+            </div>
+            <FiChevronDown className="hidden md:block text-[#8F99A3]" />
           </div>
-          <div className="hidden md:block">
-            <p className="text-[13px] font-[600] leading-tight">{fio}</p>
-            <p className="text-[11px] text-[#8F99A3]">{role}</p>
-          </div>
-          <FiChevronDown className="hidden md:block text-[#8F99A3]" />
-        </div>
+        </Dropdown>
       </div>
     </div>
   );

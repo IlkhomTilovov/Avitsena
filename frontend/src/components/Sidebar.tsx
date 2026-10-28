@@ -8,6 +8,7 @@ import { FiLogOut, FiPlus, FiHeadphones } from "react-icons/fi";
 import { MenuFoldOutlined, MenuUnfoldOutlined } from "@ant-design/icons";
 import { useCreateContext } from "../context/ContextApi";
 import { OneMedAdmin } from "../queries/query";
+import SecureStorage from "react-secure-storage";
 
 type NavItem = {
   key: string;
@@ -149,7 +150,13 @@ export default function Sidebar() {
 
       {/* Logout */}
       <button
-        onClick={() => navigate("/")}
+        onClick={() => {
+          SecureStorage.removeItem("accessToken");
+          SecureStorage.removeItem("refreshToken");
+          SecureStorage.removeItem("userSettingData");
+          localStorage.removeItem("fio");
+          navigate("/", { replace: true });
+        }}
         className={`w-full flex items-center ${
           collapsed ? "justify-center" : ""
         } gap-3 px-3 py-2.5 text-[#44525C] hover:bg-[#F1F5F4] rounded-[10px] cursor-pointer`}
