@@ -100,19 +100,29 @@ export default function Sidebar() {
     >
       {/* Logo */}
       <div
-        className={`flex items-center gap-3 px-2 pb-5 mb-2 border-b border-[#F0F2F3] ${
-          collapsed ? "justify-center" : ""
-        }`}
+        className={`flex items-center ${
+          collapsed ? "flex-col gap-2 justify-center" : "justify-between gap-3"
+        } px-2 pb-5 mb-2 border-b border-[#F0F2F3]`}
       >
-        <div className="w-[38px] h-[38px] shrink-0 rounded-[10px] bg-[#0D9488] text-white flex items-center justify-center text-[18px]">
-          <FiPlus />
-        </div>
-        {!collapsed && (
-          <div>
-            <h1 className="text-[16px] font-[700] leading-tight">AVITSENA</h1>
-            <p className="text-[11px] text-[#8F99A3]">Tibbiy boshqaruv tizimi</p>
+        <div className="flex items-center gap-3">
+          <div className="w-[38px] h-[38px] shrink-0 rounded-[10px] bg-[#0D9488] text-white flex items-center justify-center text-[18px]">
+            <FiPlus />
           </div>
-        )}
+          {!collapsed && (
+            <div>
+              <h1 className="text-[16px] font-[700] leading-tight">AVITSENA</h1>
+              <p className="text-[11px] text-[#8F99A3]">Tibbiy boshqaruv tizimi</p>
+            </div>
+          )}
+        </div>
+
+        <button
+          onClick={toggleCollapsed}
+          title={collapsed ? "Kengaytirish" : "Yig'ish"}
+          className="w-[28px] h-[28px] shrink-0 flex items-center justify-center text-[#8F99A3] hover:bg-[#F1F5F4] rounded-[8px] cursor-pointer"
+        >
+          {collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+        </button>
       </div>
 
       {/* Menu */}
@@ -139,14 +149,6 @@ export default function Sidebar() {
           </button>
         </div>
       )}
-
-      {/* Collapse toggle */}
-      <button
-        onClick={toggleCollapsed}
-        className="w-full flex items-center justify-center gap-2 py-2 text-[#8F99A3] hover:bg-[#F1F5F4] rounded-[10px] mb-1 cursor-pointer"
-      >
-        {collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
-      </button>
 
       {/* Logout */}
       <button
