@@ -483,7 +483,7 @@ export default function Services() {
                         setSelectedCategoryId(cat.id);
                         setCategoryEditMode(false);
                       }}
-                      className={`flex items-center justify-between gap-2 px-3 py-2.5 rounded-[8px] text-left cursor-pointer transition-colors ${
+                      className={`flex items-center justify-between gap-2 px-3 py-1.5 rounded-[8px] text-left cursor-pointer transition-colors ${
                         active ? "bg-[#E9FBF4]" : "hover:bg-[#F9FAFB]"
                       }`}
                     >
@@ -680,12 +680,12 @@ export default function Services() {
                     <table className="w-full text-[13px]">
                       <thead>
                         <tr className="text-[11px] text-[#8F99A3] text-left border-b border-[#F0F2F3]">
-                          <th className="py-2 font-[500]">Xizmat nomi</th>
-                          <th className="py-2 font-[500]">Shifokorlar</th>
-                          <th className="py-2 font-[500]">Davomiyligi</th>
-                          <th className="py-2 font-[500]">Narx</th>
-                          <th className="py-2 font-[500]">Faol</th>
-                          <th className="py-2 font-[500]"></th>
+                          <th className="py-1.5 font-[500]">Xizmat nomi</th>
+                          <th className="py-1.5 font-[500]">Shifokorlar</th>
+                          <th className="py-1.5 font-[500]">Davomiyligi</th>
+                          <th className="py-1.5 font-[500]">Narx</th>
+                          <th className="py-1.5 font-[500]">Faol</th>
+                          <th className="py-1.5 font-[500]"></th>
                         </tr>
                       </thead>
                       <tbody>
@@ -694,8 +694,8 @@ export default function Services() {
                             key={s.id}
                             className="border-b border-[#F7F8F9] last:border-none"
                           >
-                            <td className="py-2.5 font-[500]">{s.name}</td>
-                            <td className="py-2.5">
+                            <td className="py-1.5 font-[500]">{s.name}</td>
+                            <td className="py-1.5">
                               {s.doctors.length === 0 ? (
                                 <span className="text-[#C7CED3]">—</span>
                               ) : (
@@ -717,22 +717,22 @@ export default function Services() {
                                 </div>
                               )}
                             </td>
-                            <td className="py-2.5 text-[#64727B]">
+                            <td className="py-1.5 text-[#64727B]">
                               {s.duration_minutes
                                 ? `${s.duration_minutes} daq`
                                 : "—"}
                             </td>
-                            <td className="py-2.5 font-[600]">
+                            <td className="py-1.5 font-[600]">
                               {s.price.toLocaleString()} so'm
                             </td>
-                            <td className="py-2.5">
+                            <td className="py-1.5">
                               <Switch
                                 size="small"
                                 checked={s.is_active}
                                 onChange={() => toggleServiceActive(s)}
                               />
                             </td>
-                            <td className="py-2.5">
+                            <td className="py-1.5">
                               <div className="flex items-center gap-1">
                                 <button
                                   onClick={() => setEditingService(s)}
