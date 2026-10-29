@@ -1,15 +1,18 @@
 import { BiSolidEditAlt } from "react-icons/bi";
-import { IoMdArrowBack } from "react-icons/io";
 import { Link, useNavigate, useParams } from "react-router-dom";
-// import { IoTrashOutline } from "react-icons/io5";
 import { FaStethoscope } from "react-icons/fa6";
 import { PiMedalLight } from "react-icons/pi";
-import { LuUser } from "react-icons/lu";
+import { LuAtSign, LuUser } from "react-icons/lu";
+import { FiPlus } from "react-icons/fi";
 import { BsTelephone } from "react-icons/bs";
 import {
   Area,
   AreaChart,
+  Bar,
+  BarChart,
   CartesianGrid,
+  Cell,
+  ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -35,6 +38,13 @@ import { BsDoorOpen } from "react-icons/bs";
 import { useEffect, useState } from "react";
 import { LoadingOutlined } from "@ant-design/icons";
 import { GoTrash } from "react-icons/go";
+import dayjs from "dayjs";
+import {
+  ROLE_BADGE_COLOR,
+  ROLE_LABEL,
+  getAvatarColor,
+  getInitials,
+} from "../utils/employeeUi";
 
 export interface Service {
   id: string;
@@ -143,6 +153,30 @@ export default function EmployeeInfo() {
     }
     return value.toString(); // kichkina sonlar oddiy
   };
+
+  const dailyStats = employeeData?.data?.doctor?.patients_stats?.daily_stats || [];
+  const todayStr = dayjs().format("YYYY-MM-DD");
+  const currentMonthStr = dayjs().format("YYYY-MM");
+
+  const todayPatients =
+    dailyStats.find((stat) => stat.date === todayStr)?.patient_count ?? 0;
+
+  const monthDailyStats = dailyStats.filter(
+    (stat) => dayjs(stat.date).format("YYYY-MM") === currentMonthStr
+  );
+  const monthPatients = monthDailyStats.reduce(
+    (acc, stat) => acc + Number(stat.patient_count),
+    0
+  );
+  const monthRevenue = monthDailyStats.reduce(
+    (acc, stat) => acc + Number(stat.revenue || 0),
+    0
+  );
+
+  const avgPatientsPerDay = dailyStats.length
+    ? dailyStats.reduce((acc, stat) => acc + Number(stat.patient_count), 0) /
+      dailyStats.length
+    : 0;
 
   // console.log(employeeData?.data);
 
@@ -366,72 +400,138 @@ export default function EmployeeInfo() {
     );
   }
 
+  const employee = employeeData?.data;
+  const fio = employee?.fio || "";
+  const role = employee?.role || "";
+  const isDoctor = role === "doctor";
+  const isActive = employee?.status === "active";
+  const avatarColor = getAvatarColor(employee?.id || fio);
+  const categoryNames =
+    employee?.doctor?.categories?.map((c) => c.name).join(", ") || "";
+  const roomNumber = employee?.doctor?.room_number;
+  const experienceYear = employee?.doctor?.experience_year;
+
   return (
     <div className="pr-[10px] md:pr-auto">
-      <div className="flex items-center justify-between my-4">
-        {/* Orqaga qaytish */}
-        {contextHolder}
-        <div className="flex items-center gap-4">
-          <Link
-            to="/employees"
-            className=" items-center hidden md:flex gap-1 px-6 py-2.5 text-[14px] font-[500] rounded-md hover:bg-[#E6F4FF]"
-          >
-            <IoMdArrowBack className="text-[16px]" />
-            Orqaga
-          </Link>
+      {contextHolder}
 
-          {/* Patient ismi + avatar */}
-          <div className="flex items-center gap-3">
-            <div>
-              <h2 className="md:text-[22px] text-[18px] font-[600] mb-[-5px]">
-                {employeeData?.data.role === "admin"
-                  ? "Admin"
-                  : employeeData?.data.role === "registrator"
-                  ? "Registrator"
-                  : employeeData?.data.role === "doctor"
-                  ? "Doctor"
-                  : ""}{" "}
-                ma'lumotlari
-              </h2>
-              <p className="text-[#9D99AB] font-[300] md:text-[14px] text-[12px]">
-                To'liq ma'lumot va jadval
-              </p>
+      {/* Breadcrumb */}
+      <div className="flex items-center gap-2 mt-4 text-[13px]">
+        <Link to="/dashboard" className="text-[#8F99A3] hover:text-[#44525C]">
+          Bosh sahifa
+        </Link>
+        <span className="text-[#C7CED3]">/</span>
+        <Link to="/employees" className="text-[#8F99A3] hover:text-[#44525C]">
+          Xodimlar
+        </Link>
+        <span className="text-[#C7CED3]">/</span>
+        <span className="font-[500] text-[#44525C]">{fio}</span>
+      </div>
+
+      {/* Profil karta */}
+      <div className="border border-[#E8E8E8] bg-white rounded-[14px] overflow-hidden mt-3 mb-4">
+        <div className="relative h-[90px] bg-gradient-to-r from-[#0D9488] to-[#14B8A6] overflow-hidden">
+          <svg
+            className="pointer-events-none absolute inset-0 h-full w-full"
+            viewBox="0 0 800 90"
+            preserveAspectRatio="none"
+          >
+            <polyline
+              points="0,52 140,52 165,20 190,75 215,38 240,52 800,52"
+              fill="none"
+              stroke="#fff"
+              strokeOpacity="0.35"
+              strokeWidth="2"
+            />
+          </svg>
+        </div>
+        <div className="px-6 pb-5 -mt-10 flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4">
+          <div className="flex items-end gap-4">
+            <div className="relative shrink-0">
+              <div
+                className="h-[72px] w-[72px] rounded-[18px] border-4 border-white flex items-center justify-center font-[700] text-[22px]"
+                style={{ backgroundColor: avatarColor.bg, color: avatarColor.text }}
+              >
+                {getInitials(fio)}
+              </div>
+              <span
+                className={`absolute bottom-1 right-1 h-[12px] w-[12px] rounded-full border-2 border-white ${
+                  isActive ? "bg-[#1DC981]" : "bg-[#A9B2B8]"
+                }`}
+              />
+            </div>
+            <div className="pb-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <h1 className="text-[18px] md:text-[22px] font-[700] text-[#1A2430]">
+                  {isDoctor ? `Dr. ${fio}` : fio}
+                </h1>
+                <span
+                  className={`text-[11px] font-[600] px-2.5 py-0.5 rounded-full ${
+                    ROLE_BADGE_COLOR[role] || "bg-[#F1F5F4] text-[#44525C]"
+                  }`}
+                >
+                  {ROLE_LABEL[role] || role}
+                </span>
+                <span
+                  className={`text-[11px] font-[600] px-2.5 py-0.5 rounded-full ${
+                    isActive
+                      ? "bg-[#E9FBF4] text-[#0D9488]"
+                      : "bg-[#F1F5F4] text-[#64727B]"
+                  }`}
+                >
+                  {isActive ? "Ishda" : "Nofaol"}
+                </span>
+              </div>
+              <div className="mt-2 flex flex-wrap items-center gap-2 text-[12px] text-[#44525C]">
+                {isDoctor && categoryNames && (
+                  <span className="flex items-center gap-1 rounded-full border border-[#E0E6EB] px-2.5 py-1">
+                    <FaStethoscope /> {categoryNames}
+                  </span>
+                )}
+                {isDoctor && !!roomNumber && (
+                  <span className="flex items-center gap-1 rounded-full border border-[#E0E6EB] px-2.5 py-1">
+                    <BsDoorOpen /> Xona №{roomNumber}
+                  </span>
+                )}
+                {isDoctor && experienceYear != null && (
+                  <span className="flex items-center gap-1 rounded-full border border-[#E0E6EB] px-2.5 py-1">
+                    <PiMedalLight /> Tajriba {experienceYear} yil
+                  </span>
+                )}
+                {employee?.username && (
+                  <span className="flex items-center gap-1 rounded-full border border-[#E0E6EB] px-2.5 py-1">
+                    <LuAtSign /> {employee.username}
+                  </span>
+                )}
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Edit tugmasi */}
-        <div className="flex gap-3 flex-col-reverse md:flex-row">
-          {employeeData?.data.role === "admin" ? (
-            ""
-          ) : (
+          <div className="flex gap-2 flex-wrap pb-1">
+            {role !== "admin" && (
+              <button
+                onClick={showDeleteModal}
+                className="cursor-pointer text-red-500 border-red-500 md:px-5 px-3 md:py-2 py-1.5 border rounded-[8px] md:text-[14px] text-[12px] flex items-center md:gap-2 hover:bg-[#ff121218] transition-all duration-150"
+              >
+                <GoTrash className="md:text-[18px] text-[16px]" />
+                O'chirish
+              </button>
+            )}
             <button
-              onClick={showDeleteModal}
-              className="cursor-pointer text-red-500 border-red-500 md:px-6 px-3 md:py-2 py-1.5 border  rounded-md md:text-[14px] text-[12px] flex md:gap-2 hover:bg-[#ff121218] transition-all duration-150"
+              onClick={showModalPassword}
+              className="cursor-pointer text-yellow-500 border-yellow-500 md:px-5 px-3 md:py-2 py-1.5 border rounded-[8px] md:text-[14px] text-[12px] flex items-center md:gap-2 hover:bg-[#ffbc1218] transition-all duration-150"
             >
-              <GoTrash className="md:text-[18px] text-[16px]" />
-              O'chirish
+              <BiSolidEditAlt className="md:text-[18px] text-[16px]" />
+              Parolini o'zgartirish
             </button>
-          )}
-          <button
-            onClick={showModalPassword}
-            className="cursor-pointer text-yellow-500 border-yellow-500 md:px-6 px-3 md:py-2 py-1.5 border  rounded-md md:text-[14px] text-[12px] flex md:gap-2 hover:bg-[#ffbc1218] transition-all duration-150"
-          >
-            <BiSolidEditAlt className="md:text-[18px] text-[16px]" />
-            Parolini o'zgartirish
-          </button>
-          <button
-            onClick={showModal}
-            className="cursor-pointer text-blue-500 border-blue-500 md:px-6 px-3 md:py-2 py-1.5 border  rounded-md md:text-[14px] text-[12px flex md:gap-2 hover:bg-[#E6F4FF] transition-all duration-150"
-          >
-            <BiSolidEditAlt className="md:text-[18px] text-[16px]" />
-            Tahrirlash
-          </button>
-
-          {/* <button className="cursor-pointer px-6 py-2 border border-red-500 text-red-500 rounded-md text-[14px] flex gap-2 hover:bg-red-500/10 transition-all duration-150">
-            <IoTrashOutline className="text-[18px]" />
-            O'chirish
-          </button> */}
+            <button
+              onClick={showModal}
+              className="cursor-pointer text-blue-500 border-blue-500 md:px-5 px-3 md:py-2 py-1.5 border rounded-[8px] md:text-[14px] text-[12px] flex items-center md:gap-2 hover:bg-[#E6F4FF] transition-all duration-150"
+            >
+              <BiSolidEditAlt className="md:text-[18px] text-[16px]" />
+              Tahrirlash
+            </button>
+          </div>
         </div>
       </div>
 
@@ -670,223 +770,253 @@ export default function EmployeeInfo() {
 
       {/* Body qism */}
       <div className="grid grid-cols-12 gap-4">
-        <div className="md:col-span-4 col-span-12">
-          <div className="border bg-[#fff] border-[#E8E8E8]  rounded-[10px]">
-            <div className="bg-[#1173D4] rounded-t-[10px] px-[20px] py-[25px]">
-              <h4 className="md:text-[20px] text-[16px] font-[600] text-white">
-                {employeeData?.data.fio}
-              </h4>
-              <p className="md:text-[20px] text-[16px] font-[500] text-white/40">
-                ID: {employeeData?.data.username}
-              </p>
-              <span className="inline-flex items-center mt-2 md:text-[16px] text-[14px] text-white px-[10px] py-[4px] gap-1 rounded-xl bg-[#418FDD]">
-                {" "}
-                <FaStethoscope /> roles.{employeeData?.data.role}
+        <div
+          className={`${
+            isDoctor ? "lg:col-span-4" : "lg:col-span-12"
+          } col-span-12 flex flex-col gap-4`}
+        >
+          {/* Shaxsiy ma'lumotlar */}
+          <div className="border bg-[#fff] border-[#E8E8E8] rounded-[10px] p-5">
+            <h3 className="flex items-center gap-2 font-[600] text-[15px] mb-4">
+              <span className="p-1.5 rounded-md text-[#0D9488] bg-[#E9FBF4]">
+                <LuUser />
               </span>
-              <div className="md:text-[16px] text-[14px] text-white mt-2">
-                <span className="flex items-center gap-1">
-                  <PiMedalLight /> tajriba
-                </span>
+              Shaxsiy ma'lumotlar
+            </h3>
+            <div className="flex items-center gap-3 border border-[#E0E6EB] rounded-[10px] px-4 py-3">
+              <BsTelephone className="text-[#8F99A3]" />
+              <div>
+                <p className="text-[11px] uppercase text-[#8F99A3]">
+                  Telefon
+                </p>
+                <p className="font-[600] text-[14px]">{employee?.phone}</p>
               </div>
             </div>
-            <div className="px-[20px] py-[25px]">
-              <div className="flex items-start gap-2  border-b border-b-[#d9d9d9] pb-6 mb-6">
-                <div className="p-2 rounded-md text-[#0079f3] bg-[#bed2e7]">
-                  <LuUser />
-                </div>
-                <div className="w-full">
-                  <h5 className="font-[600] md:text-[18px] text-[16px] mt-1">
-                    Mutahasislik
-                  </h5>
-                  <div className="w-full flex flex-col gap-2.5 mt-4">
-                    <div className="w-full">
-                      {employeeData?.data?.doctor?.categories?.map((item) => (
-                        <div key={item.id} className="mb-2 w-full">
-                          {/* Kategoriya nomi */}
-                          <h3 className="text-lg font-[500] text-[#2B7FFF]">
-                            {item.name}
-                          </h3>
+          </div>
 
-                          {/* Servis sarlavha */}
-                          <p className="uppercase text-sm text-gray-500 mt-1 mb-2">
-                            Servislar:
-                          </p>
-
-                          {/* Servislar ro'yxati */}
-                          <ul className="space-y-2">
-                            {item.services?.map((service, index) => (
-                              <li
-                                key={service.id}
-                                className="flex items-centter gap-2 "
-                              >
-                                <span className="text-[#b3b3b3]">
-                                  {index + 1}.
-                                </span>
-                                <span className="font-medium">
-                                  {service.name}
-                                </span>
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
+          {/* Xizmatlar */}
+          {isDoctor && (
+            <div className="border bg-[#fff] border-[#E8E8E8] rounded-[10px] p-5">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="flex items-center gap-2 font-[600] text-[15px]">
+                  <span className="p-1.5 rounded-md text-[#2D6FE0] bg-[#EAF1FF]">
+                    <FaStethoscope />
+                  </span>
+                  Xizmatlar
+                </h3>
+                <button
+                  onClick={showModal}
+                  className="flex items-center gap-1 text-[12px] font-[600] text-[#0D9488] hover:underline cursor-pointer"
+                >
+                  <FiPlus /> Biriktirish
+                </button>
               </div>
-              <div className="flex items-start gap-2  ">
-                <div className="p-2 rounded-md text-[#010306] bg-[#d6d8db]">
-                  <BsTelephone />
-                </div>
-                <div className="w-full">
-                  <h5 className="font-[600] md:text-[18px] text-[16px] mt-1">
-                    Bog'lanish
-                  </h5>
-                  <div className="border border-[#d4d4d4] rounded-xl flex items-center py-3 px-4 !w-full bg-[#EFFBF6] gap-4 mt-4">
-                    <BsTelephone className="text-[17px]" />
-                    <div className="">
-                      <span className="uppercase md:text-[16px] text-[14px] text-[#8FA9C7]">
-                        Telefon
-                      </span>
-                      <p className="font-[600]">{employeeData?.data.phone}</p>
-                    </div>
-                  </div>
-
-                  {employeeData?.data?.doctor?.room_number && (
-                    <div className="border border-[#d4d4d4] rounded-xl flex items-center py-3 px-4 !w-full bg-[#effafb] gap-4 mt-4">
-                      <BsDoorOpen className="text-[17px]" />
-                      <div className="">
-                        <span className="uppercase md:text-[16px] text-[14px] text-[#8fc4c7]">
-                          Xona raqami
+              {employee?.doctor?.categories?.some(
+                (c) => c.services?.length
+              ) ? (
+                <div className="flex flex-col gap-2">
+                  {employee.doctor.categories.flatMap((cat) =>
+                    cat.services.map((srv) => (
+                      <div
+                        key={srv.id}
+                        className="flex items-center justify-between border border-[#F0F2F3] rounded-[8px] px-3 py-2"
+                      >
+                        <span className="text-[13px] text-[#44525C]">
+                          {srv.name}
                         </span>
-                        <p className="font-[600]">
-                          {employeeData?.data?.doctor?.room_number}
-                        </p>
+                        <span className="text-[13px] font-[600]">
+                          {srv.price.toLocaleString("uz-UZ")}
+                        </span>
                       </div>
-                    </div>
+                    ))
                   )}
                 </div>
+              ) : (
+                <p className="text-[13px] text-[#8F99A3]">
+                  Hali xizmat biriktirilmagan
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+
+        {isDoctor && (
+          <div className="lg:col-span-8 col-span-12 flex flex-col gap-4">
+            {/* Stat kartalar */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div className="border bg-[#fff] border-[#E8E8E8] rounded-[10px] px-4 py-3">
+                <p className="text-[11px] text-[#8F99A3]">Bugun</p>
+                <p className="text-[18px] font-[700]">
+                  {todayPatients} bemor
+                </p>
+              </div>
+              <div className="border bg-[#fff] border-[#E8E8E8] rounded-[10px] px-4 py-3">
+                <p className="text-[11px] text-[#8F99A3]">Shu oy</p>
+                <p className="text-[18px] font-[700]">
+                  {monthPatients} bemor
+                </p>
+              </div>
+              <div className="border bg-[#fff] border-[#E8E8E8] rounded-[10px] px-4 py-3">
+                <p className="text-[11px] text-[#8F99A3]">Oylik tushum</p>
+                <p className="text-[18px] font-[700]">
+                  {formatNumber(monthRevenue)} so'm
+                </p>
+              </div>
+              <div className="border bg-[#fff] border-[#E8E8E8] rounded-[10px] px-4 py-3">
+                <p className="text-[11px] text-[#8F99A3]">
+                  Tashriflar (30 kun)
+                </p>
+                <p className="text-[18px] font-[700]">
+                  {employee?.doctor?.patients_stats?.total_visits ?? 0}
+                </p>
               </div>
             </div>
-          </div>
-        </div>
-        <div className="md:col-span-8 col-span-12">
-          <div className="border bg-[#fff] border-[#E8E8E8] p-[25px] rounded-[10px] mb-4">
-            <div className="mb-2">
-              <h3 className="text-[#0079f3] text-[14px] md:text-[16px]">
-                Kunlik qabul qilingan bemorlar
-              </h3>
-              <h2 className="md:text-[24px] text-[20px] font-[600]">
-                {employeeData?.data?.doctor?.patients_stats?.daily_stats.reduce(
-                  (acc, item) => acc + Number(item.patient_count),
-                  0
-                )}
-                <span className="ms-1">bemor (oxirgi 30 kun)</span>
-              </h2>
+
+            {/* Qabul qilingan bemorlar */}
+            <div className="border bg-[#fff] border-[#E8E8E8] p-[25px] rounded-[10px]">
+              <div className="mb-2">
+                <h3 className="text-[#0D9488] text-[14px] md:text-[16px]">
+                  Qabul qilingan bemorlar
+                </h3>
+                <h2 className="md:text-[24px] text-[20px] font-[600]">
+                  {dailyStats.reduce(
+                    (acc, item) => acc + Number(item.patient_count),
+                    0
+                  )}
+                  <span className="ms-1 text-[13px] font-[400] text-[#8F99A3]">
+                    bemor (oxirgi 30 kun)
+                  </span>
+                </h2>
+              </div>
+              <ResponsiveContainer width="100%" height={250}>
+                <BarChart
+                  data={chartData}
+                  margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
+                >
+                  <CartesianGrid
+                    strokeDasharray="3 3"
+                    vertical={false}
+                    stroke="#F0F2F3"
+                  />
+                  <XAxis
+                    dataKey="date"
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fontSize: 11, fill: "#8F99A3" }}
+                    tickFormatter={(date: string) => {
+                      const parts = date.split("-");
+                      return `${parts[2]}/${parts[1]}`; // 15/07
+                    }}
+                  />
+                  <YAxis
+                    axisLine={false}
+                    tickLine={false}
+                    allowDecimals={false}
+                    tick={{ fontSize: 11, fill: "#8F99A3" }}
+                  />
+                  <Tooltip
+                    cursor={{ fill: "#F5F7F8" }}
+                    formatter={(value) => [`${value} bemor`, "Qabul"]}
+                    labelFormatter={(label) => {
+                      const parts = label.split("-");
+                      return `${parts[2]}/${parts[1]}`; // "15/07"
+                    }}
+                  />
+                  {avgPatientsPerDay > 0 && (
+                    <ReferenceLine
+                      y={avgPatientsPerDay}
+                      stroke="#D0D5DA"
+                      strokeDasharray="4 4"
+                      label={{
+                        value: `O'rtacha: ${avgPatientsPerDay.toFixed(1)}/kun`,
+                        position: "insideTopLeft",
+                        fontSize: 11,
+                        fill: "#8F99A3",
+                      }}
+                    />
+                  )}
+                  <Bar dataKey="patients" radius={[4, 4, 0, 0]} maxBarSize={28}>
+                    {chartData.map((entry, idx) => (
+                      <Cell
+                        key={idx}
+                        fill={entry.date === todayStr ? "#0D9488" : "#99E2D7"}
+                      />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
             </div>
-            <ResponsiveContainer width="100%" height={250}>
-              <AreaChart
-                data={chartData}
-                margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
-              >
-                <defs>
-                  <linearGradient
-                    id="colorPatients"
-                    x1="0"
-                    y1="0"
-                    x2="0"
-                    y2="1"
-                  >
-                    <stop offset="5%" stopColor="#4a90e2" stopOpacity={0.8} />
-                    <stop offset="95%" stopColor="#4a90e2" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
 
-                <XAxis
-                  dataKey="date"
-                  tickFormatter={(date: string) => {
-                    const parts = date.split("-");
-                    return `${parts[2]}/${parts[1]}`; // 15/07
-                  }}
-                />
-                <YAxis />
-                <CartesianGrid strokeDasharray="3 3" />
+            {/* Kunlik tushum */}
+            <div className="border bg-[#fff] border-[#E8E8E8] p-[25px] rounded-[10px]">
+              <div className="mb-2">
+                <h3 className="text-[#2D6FE0] text-[14px] md:text-[16px]">
+                  Shifokor keltirgan kunlik tushum
+                </h3>
+                <h2 className="md:text-[24px] text-[20px] font-[600]">
+                  {dailyStats.reduce(
+                    (acc, item) => acc + Number(item.revenue || 0),
+                    0
+                  )}
+                  <span className="ms-1 text-[13px] font-[400] text-[#8F99A3]">
+                    so'm (oxirgi 30 kun)
+                  </span>
+                </h2>
+              </div>
+              <ResponsiveContainer width="100%" height={250}>
+                <AreaChart
+                  data={chartData2}
+                  margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
+                >
+                  <defs>
+                    <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#2D6FE0" stopOpacity={0.8} />
+                      <stop offset="95%" stopColor="#2D6FE0" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
 
-                {/* Tooltipni custom qildik */}
-                <Tooltip
-                  formatter={(value) => [`Qabul: ${value} bemor`, ""]}
-                  labelFormatter={(label) => {
-                    // label "2025-07-15" bo'lsa → ["2025","07","15"]
-                    const parts = label.split("-");
-                    return `${parts[2]}/${parts[1]}`; // "15/07"
-                  }}
-                />
+                  <XAxis
+                    dataKey="date"
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fontSize: 11, fill: "#8F99A3" }}
+                    tickFormatter={(date: string) => {
+                      const parts = date.split("-");
+                      return `${parts[2]}/${parts[1]}`; // faqat kun/oy
+                    }}
+                  />
+                  <YAxis
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fontSize: 11, fill: "#8F99A3" }}
+                    tickFormatter={(value) => formatNumber(value)}
+                  />
+                  <CartesianGrid
+                    strokeDasharray="3 3"
+                    vertical={false}
+                    stroke="#F0F2F3"
+                  />
 
-                <Area
-                  type="monotone"
-                  dataKey="patients"
-                  stroke="#4a90e2"
-                  fillOpacity={1}
-                  fill="url(#colorPatients)"
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
+                  <Tooltip
+                    formatter={(value) => [`${value} so'm`, "Daromad"]}
+                    labelFormatter={(label) => {
+                      const parts = label.split("-");
+                      return `${parts[2]}/${parts[1]}`; // 15/07
+                    }}
+                  />
 
-          <div className="border bg-[#fff] border-[#E8E8E8] p-[25px] rounded-[10px]">
-            <div className="mb-2">
-              <h3 className="text-[#0079f3] text-[14px] md:text-[16px">
-                Shifokor keltirgan kunlik tushum
-              </h3>
-              <h2 className="md:text-[24px] text-[20px] font-[600]">
-                {employeeData?.data?.doctor?.patients_stats?.daily_stats.reduce(
-                  (acc, item) => acc + Number(item.revenue.toFixed(1)),
-                  0
-                )}
-                <span className="ms-1">so'm (oxirgi 30 kun)</span>
-              </h2>
+                  <Area
+                    type="monotone"
+                    dataKey="revenue"
+                    stroke="#2D6FE0"
+                    fillOpacity={1}
+                    fill="url(#colorRevenue)"
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
             </div>
-            <ResponsiveContainer width="100%" height={250}>
-              <AreaChart
-                data={chartData2}
-                margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
-              >
-                <defs>
-                  <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#4CAF50" stopOpacity={0.8} />
-                    <stop offset="95%" stopColor="#4CAF50" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-
-                <XAxis
-                  dataKey="date"
-                  tickFormatter={(date: string) => {
-                    const parts = date.split("-");
-                    return `${parts[2]}/${parts[1]}`; // faqat kun/oy
-                  }}
-                />
-                <YAxis tickFormatter={(value) => formatNumber(value)} />
-                <CartesianGrid strokeDasharray="3 3" />
-
-                <Tooltip
-                  formatter={(value) => [`${value} so'm`, "Daromad"]}
-                  labelFormatter={(label) => {
-                    const parts = label.split("-");
-                    return `${parts[2]}/${parts[1]}`; // 15/07
-                  }}
-                />
-
-                <Area
-                  type="monotone"
-                  dataKey="revenue"
-                  stroke="#4CAF50"
-                  fillOpacity={1}
-                  fill="url(#colorRevenue)"
-                />
-              </AreaChart>
-            </ResponsiveContainer>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );
