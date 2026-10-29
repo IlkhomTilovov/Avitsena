@@ -1,6 +1,7 @@
-import { FiPlus } from "react-icons/fi";
+import { FiCamera, FiLock } from "react-icons/fi";
+import { LuBriefcase, LuUser } from "react-icons/lu";
 import { LoadingOutlined } from "@ant-design/icons";
-import { Button, Card, Form, Input, Modal, notification, Select, Spin } from "antd";
+import { Button, Card, Form, Input, Modal, notification, Spin } from "antd";
 import { useMutation, useQuery, useQueryClient } from "react-query";
 import {
   ChangePasswordPayload,
@@ -53,9 +54,23 @@ export interface UpdateProfilePayload {
   doctor?: DoctorPayload;
 }
 
-export default function Settings() {
-  const [form] = Form.useForm();
+const roleLabels: Record<string, string> = {
+  admin: "Administrator",
+  registrator: "Registrator",
+  doctor: "Shifokor",
+  superadmin: "Super Admin",
+};
 
+function getInitials(fio: string) {
+  return fio
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join("");
+}
+
+export default function Settings() {
   type NotificationType = "success" | "info" | "warning" | "error";
 
   const [api, contextHolder] = notification.useNotification();
@@ -73,23 +88,9 @@ export default function Settings() {
 
   const queryClient = useQueryClient();
 
-  // Modal
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  // Parol modali
   const [isModalPassOpen, setIsModalPassOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
-
-  const showModal = () => {
-    setIsModalOpen(true);
-  };
-
-  const handleOk = () => {
-    setIsModalOpen(false);
-  };
-
-  const handleCancel = () => {
-    setIsModalOpen(false);
-    setIsEditing(false);
-  };
 
   const showModalPass = () => {
     setIsModalPassOpen(true);
@@ -103,58 +104,57 @@ export default function Settings() {
     setIsModalPassOpen(false);
   };
 
+  // Profil forma maydonlari (fio bitta maydon sifatida saqlanadi, uchta bo'lakka bo'lib ko'rsatiladi)
+  const [familiya, setFamiliya] = useState("");
+  const [ism, setIsm] = useState("");
+  const [otasiningIsmi, setOtasiningIsmi] = useState("");
+  const [phone, setPhone] = useState("");
+
   // Query orqali user profile malumotlarini olish
   const { data: getUserProfileData } = useQuery<UserProfileResponse>({
     queryKey: ["getUserProfile"],
     queryFn: () => OneMedAdmin.getUserProfile(),
     staleTime: Infinity,
     cacheTime: Infinity,
-    enabled: !!isModalOpen,
   });
 
+  const resetFieldsFromProfile = () => {
+    const profile = getUserProfileData?.data;
+
+    if (!profile) return;
+
+    const parts = (profile.fio || "").trim().split(/\s+/).filter(Boolean);
+
+    setFamiliya(parts[0] || "");
+    setIsm(parts[1] || "");
+    setOtasiningIsmi(parts.slice(2).join(" "));
+    setPhone(profile.phone || "");
+  };
+
   useEffect(() => {
-    if (getUserProfileData?.data) {
-      form.setFieldsValue({
-        fio: getUserProfileData.data.fio,
-        username: getUserProfileData.data.username,
-        phone: getUserProfileData.data.phone,
-        role: getUserProfileData.data.role,
-        more: getUserProfileData.data.more,
-        doctor: getUserProfileData.data.doctor
-          ? {
-              experience_year: getUserProfileData.data.doctor.experience_year,
-              patients_stats: getUserProfileData.data.doctor.patients_stats,
-              categories: {
-                name: getUserProfileData.data.doctor.categories?.name,
-                services:
-                  getUserProfileData.data.doctor.categories?.services?.map(
-                    (s) => ({
-                      name: s.name,
-                      price: s.price,
-                    })
-                  ),
-              },
-            }
-          : undefined,
-      });
-    }
-  }, [getUserProfileData, form]);
+    resetFieldsFromProfile();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [getUserProfileData]);
 
   const { mutate: updateProfileMutate, isLoading: updateProfileDataLoading } =
     useMutation<UserProfileResponse, Error, UpdateProfilePayload>(
       (obj) => OneMedAdmin.updateProfileData(obj),
       {
         onSuccess: () => {
-          queryClient.invalidateQueries(["updateProfileData"]);
+          queryClient.invalidateQueries(["getUserProfile"]);
           openNotificationWithIcon(
             "success",
             "Profil yangilandi",
             "Profil yangilanishi muvaffaqiyatli bo'ldi!"
           );
-          handleCancel();
+          setIsEditing(false);
         },
-        onError: (err) => {
-          console.error("Update profile error:", err);
+        onError: () => {
+          openNotificationWithIcon(
+            "error",
+            "Xatolik yuz berdi!",
+            "Profil yangilanmadi, qaytadan urinib ko'ring!"
+          );
         },
       }
     );
@@ -165,7 +165,6 @@ export default function Settings() {
     ChangePasswordPayload
   >((payload) => OneMedAdmin.changePassword(payload), {
     onSuccess: () => {
-      form.resetFields();
       openNotificationWithIcon(
         "success",
         "Parol yangilandi",
@@ -189,6 +188,24 @@ export default function Settings() {
     });
   };
 
+  const handleCancelEdit = () => {
+    resetFieldsFromProfile();
+    setIsEditing(false);
+  };
+
+  const handleSaveProfile = () => {
+    const fio = [familiya, ism, otasiningIsmi]
+      .map((part) => part.trim())
+      .filter(Boolean)
+      .join(" ");
+
+    updateProfileMutate({ fio, phone });
+  };
+
+  const profile = getUserProfileData?.data;
+  const fullName = [familiya, ism].filter(Boolean).join(" ") || profile?.fio || "";
+  const roleLabel = profile?.role ? roleLabels[profile.role] || profile.role : "";
+
   return (
     <div className="pr-[10px] md:pr-auto">
       {contextHolder}
@@ -208,14 +225,6 @@ export default function Settings() {
             className="cursor-pointer hover:shadow-md  text-yellow-500 border-yellow-500 md:px-6 px-3 md:py-2 py-1.5 border  rounded-md text-[14px] flex gap-2 hover:bg-[#ffbc1218] transition-all duration-150"
           >
             Parolni o'zgartirish
-          </button>
-
-          <button
-            onClick={showModal}
-            className="flex gap-2 items-center hover:shadow-md transition-all duration-150  md:px-6 px-3 md:py-2 py-1.5 rounded-md text-[14px] text-white cursor-pointer bg-[#0D9488] hover:bg-[#0C8377]"
-          >
-            <FiPlus className="text-[20px]" />
-            Accountni sozlash
           </button>
         </div>
       </div>
@@ -289,112 +298,172 @@ export default function Settings() {
         </Card>
       </Modal>
 
-      <Modal
-        title="Admin profilini sozlash"
-        open={isModalOpen}
-        onOk={handleOk}
-        onCancel={handleCancel}
-        footer={false}
-      >
-        <Card className="!border-none">
-          <Form
-            form={form}
-            layout="vertical"
-            onFinish={(values) => {
-              const payload = {
-                fio: values.fio,
-                username: values.username,
-                role: values.role,
-                phone: values.phone,
-                more: values.more,
-                doctor: values.doctor
-                  ? {
-                      experience_year: values.doctor.experience_year,
-                      services: values.doctor.services,
-                    }
-                  : undefined,
-              };
+      {/* Profil ma'lumotlari kartasi */}
+      <div className="bg-white border border-[#ECEFF1] rounded-[16px] shadow-sm p-5 md:p-6 mt-5">
+        <div className="flex items-start gap-3 pb-4 mb-5 border-b border-[#F0F2F3]">
+          <div className="w-[38px] h-[38px] shrink-0 rounded-[10px] bg-[#F1F5F4] text-[#44525C] flex items-center justify-center text-[18px]">
+            <LuUser />
+          </div>
+          <div>
+            <h2 className="text-[16px] font-[600] leading-tight">
+              Profil ma'lumotlari
+            </h2>
+            <p className="text-[13px] text-[#8F99A3]">
+              Bu ma'lumotlar tizimda va hisobotlarda ko'rinadi
+            </p>
+          </div>
+        </div>
 
-              updateProfileMutate(payload);
-            }}
-          >
-            <Form.Item label="FIO" name="fio">
-              <Input disabled={!isEditing} />
-            </Form.Item>
+        <div className="flex flex-col md:flex-row gap-6 md:gap-10">
+          {/* Avatar blok */}
+          <div className="flex md:flex-col items-center md:items-start gap-3 md:w-[160px] shrink-0">
+            <div className="relative">
+              <div className="w-[88px] h-[88px] rounded-[20px] bg-gradient-to-br from-[#14B8A6] to-[#0D9488] text-white flex items-center justify-center text-[28px] font-[700]">
+                {getInitials(fullName || "U F") || "U"}
+              </div>
+              <button
+                type="button"
+                title="Profil rasmi tez orada qo'shiladi"
+                className="absolute -bottom-2 -right-2 w-[30px] h-[30px] rounded-full bg-white border border-[#ECEFF1] shadow-sm flex items-center justify-center text-[#44525C] cursor-not-allowed"
+              >
+                <FiCamera className="text-[13px]" />
+              </button>
+            </div>
 
-            <Form.Item label="Username" name="username">
-              <Input disabled={!isEditing} />
-            </Form.Item>
-
-            <Form.Item label="Phone" name="phone">
-              <Input disabled={!isEditing} />
-            </Form.Item>
-
-            <Form.Item label="Role" name="role">
-              <Input disabled={true} />
-            </Form.Item>
-
-            <Form.Item label="More" name="more">
-              <Input disabled={!isEditing} />
-            </Form.Item>
-
-            {getUserProfileData?.data?.doctor && (
-              <>
-                <Form.Item
-                  label="Experience Year"
-                  name={["doctor", "experience_year"]}
-                >
-                  <Input type="number" disabled={!isEditing} />
-                </Form.Item>
-
-                <Form.Item label="Services" name={["doctor", "services"]}>
-                  <Select
-                    mode="multiple"
-                    placeholder="Xizmatlarni tanlang"
-                    disabled={!isEditing}
-                    options={[
-                      {
-                        label: "Service 1",
-                        value: "3fa85f64-5717-4562-b3fc-2c963f66afa6",
-                      },
-                      {
-                        label: "Service 2",
-                        value: "7fa85f64-5717-4562-b3fc-2c963f66afa6",
-                      },
-                    ]}
-                  />
-                </Form.Item>
-              </>
-            )}
-
-            <div className="flex justify-end gap-2">
-              {!isEditing ? (
-                <div
-                  onClick={() => setIsEditing(true)}
-                  className="flex justify-center cursor-pointer items-center !w-full !h-[38px] mt-3 px-6 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-lg"
-                >
-                  Tahrirlash
-                </div>
-              ) : (
-                <Button
-                  type="primary"
-                  htmlType="submit"
-                  className="!h-[38px] !py-2.5 !w-full"
-                >
-                  {updateProfileDataLoading ? (
-                    <Spin
-                      className="!text-white"
-                      indicator={<LoadingOutlined spin />}
-                    />
-                  ) : (
-                    "Saqlash"
-                  )}
-                </Button>
+            <div className="md:mt-1">
+              <p className="text-[14px] font-[600] leading-tight">
+                {fullName || "—"}
+              </p>
+              {otasiningIsmi && (
+                <p className="text-[12px] text-[#8F99A3]">{otasiningIsmi}</p>
+              )}
+              {roleLabel && (
+                <span className="inline-flex items-center gap-1.5 mt-2 bg-[#EFEAFE] text-[#7C5CFC] text-[11px] font-[600] px-2.5 py-1 rounded-full">
+                  <span className="w-[6px] h-[6px] rounded-full bg-[#7C5CFC]" />
+                  {roleLabel}
+                </span>
               )}
             </div>
-          </Form>
-        </Card>
-      </Modal>
+          </div>
+
+          {/* Forma maydonlari */}
+          <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+            <div>
+              <label className="block text-[12px] font-[500] text-[#44525C] mb-1.5">
+                Familiya
+              </label>
+              <input
+                value={familiya}
+                onChange={(e) => setFamiliya(e.target.value)}
+                disabled={!isEditing}
+                className="w-full h-[42px] rounded-[10px] border border-[#E0E6EB] bg-white disabled:bg-[#F9FAFB] px-3.5 text-[14px] outline-none focus:border-[#0D9488] transition-colors disabled:text-[#1A1A1A]"
+              />
+            </div>
+
+            <div>
+              <label className="block text-[12px] font-[500] text-[#44525C] mb-1.5">
+                Ism
+              </label>
+              <input
+                value={ism}
+                onChange={(e) => setIsm(e.target.value)}
+                disabled={!isEditing}
+                className="w-full h-[42px] rounded-[10px] border border-[#E0E6EB] bg-white disabled:bg-[#F9FAFB] px-3.5 text-[14px] outline-none focus:border-[#0D9488] transition-colors disabled:text-[#1A1A1A]"
+              />
+            </div>
+
+            <div>
+              <label className="block text-[12px] font-[500] text-[#44525C] mb-1.5">
+                Otasining ismi
+              </label>
+              <input
+                value={otasiningIsmi}
+                onChange={(e) => setOtasiningIsmi(e.target.value)}
+                disabled={!isEditing}
+                className="w-full h-[42px] rounded-[10px] border border-[#E0E6EB] bg-white disabled:bg-[#F9FAFB] px-3.5 text-[14px] outline-none focus:border-[#0D9488] transition-colors disabled:text-[#1A1A1A]"
+              />
+            </div>
+
+            <div>
+              <label className="block text-[12px] font-[500] text-[#44525C] mb-1.5">
+                Telefon raqam
+              </label>
+              <div
+                className={`h-[42px] rounded-[10px] border border-[#E0E6EB] flex items-center px-3 gap-2 transition-colors ${
+                  isEditing ? "bg-white focus-within:border-[#0D9488]" : "bg-[#F9FAFB]"
+                }`}
+              >
+                <span className="text-[16px] leading-none">🇺🇿</span>
+                <input
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  disabled={!isEditing}
+                  className="flex-1 min-w-0 bg-transparent outline-none text-[14px] disabled:text-[#1A1A1A]"
+                />
+                <span className="flex items-center gap-1 text-[11px] font-[600] text-[#0D9488] bg-[#E9FBF4] px-2 py-1 rounded-full shrink-0">
+                  ✓ Tasdiqlangan
+                </span>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-[12px] font-[500] text-[#44525C] mb-1.5">
+                Login
+              </label>
+              <div className="h-[42px] rounded-[10px] border border-[#E0E6EB] bg-[#F9FAFB] flex items-center justify-between px-3.5">
+                <span className="flex items-center gap-2 text-[14px] text-[#1A1A1A] truncate">
+                  <LuUser className="text-[#8F99A3] shrink-0" />
+                  {profile?.username ? `@${profile.username}` : ""}
+                </span>
+                <span className="flex items-center gap-1 text-[11px] text-[#A9B2B8] shrink-0">
+                  <FiLock /> O'zgarmaydi
+                </span>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-[12px] font-[500] text-[#44525C] mb-1.5">
+                Lavozim
+              </label>
+              <div className="h-[42px] rounded-[10px] border border-[#E0E6EB] bg-[#F9FAFB] flex items-center justify-between px-3.5">
+                <span className="flex items-center gap-2 text-[14px] text-[#1A1A1A] truncate">
+                  <LuBriefcase className="text-[#8F99A3] shrink-0" />
+                  {roleLabel}
+                </span>
+                <span className="flex items-center gap-1 text-[11px] text-[#A9B2B8] shrink-0">
+                  <FiLock /> Faqat egasi
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex justify-end gap-2 mt-6 pt-5 border-t border-[#F0F2F3]">
+          {isEditing && (
+            <button
+              onClick={handleCancelEdit}
+              className="px-5 py-2 rounded-[10px] text-[14px] font-[500] text-[#44525C] border border-[#E0E6EB] hover:bg-[#F1F5F4] transition-colors cursor-pointer"
+            >
+              Bekor qilish
+            </button>
+          )}
+          <button
+            onClick={isEditing ? handleSaveProfile : () => setIsEditing(true)}
+            className="min-w-[140px] flex justify-center items-center gap-2 px-5 py-2 rounded-[10px] text-[14px] font-[500] text-white bg-[#0D9488] hover:bg-[#0C8377] transition-colors cursor-pointer"
+          >
+            {updateProfileDataLoading ? (
+              <Spin
+                className="!text-white"
+                indicator={<LoadingOutlined spin />}
+              />
+            ) : isEditing ? (
+              "Saqlash"
+            ) : (
+              "Tahrirlash"
+            )}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
