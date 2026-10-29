@@ -445,22 +445,22 @@ export default function EmployeeInfo() {
             />
           </svg>
         </div>
-        <div className="px-6 pb-5 -mt-10 flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4">
-          <div className="flex items-end gap-4">
-            <div className="relative shrink-0">
+        <div className="px-6 pb-5 pt-4 flex flex-col lg:flex-row lg:items-start lg:justify-between gap-5">
+          <div className="flex items-start gap-4">
+            <div className="relative shrink-0 -mt-12">
               <div
-                className="h-[72px] w-[72px] rounded-[18px] border-4 border-white flex items-center justify-center font-[700] text-[22px]"
+                className="h-[72px] w-[72px] rounded-[18px] border-4 border-white shadow-sm flex items-center justify-center font-[700] text-[22px]"
                 style={{ backgroundColor: avatarColor.bg, color: avatarColor.text }}
               >
                 {getInitials(fio)}
               </div>
               <span
-                className={`absolute bottom-1 right-1 h-[12px] w-[12px] rounded-full border-2 border-white ${
+                className={`absolute bottom-0.5 right-0.5 h-[12px] w-[12px] rounded-full border-2 border-white ${
                   isActive ? "bg-[#1DC981]" : "bg-[#A9B2B8]"
                 }`}
               />
             </div>
-            <div className="pb-1">
+            <div className="pt-1">
               <div className="flex flex-wrap items-center gap-2">
                 <h1 className="text-[18px] md:text-[22px] font-[700] text-[#1A2430]">
                   {isDoctor ? `Dr. ${fio}` : fio}
@@ -507,28 +507,28 @@ export default function EmployeeInfo() {
             </div>
           </div>
 
-          <div className="flex gap-2 flex-wrap pb-1">
+          <div className="flex items-center gap-2 flex-wrap shrink-0">
             {role !== "admin" && (
               <button
                 onClick={showDeleteModal}
-                className="cursor-pointer text-red-500 border-red-500 md:px-5 px-3 md:py-2 py-1.5 border rounded-[8px] md:text-[14px] text-[12px] flex items-center md:gap-2 hover:bg-[#ff121218] transition-all duration-150"
+                className="cursor-pointer flex items-center gap-1.5 px-3.5 py-2.5 rounded-[10px] text-[13px] font-[500] text-[#D4443F] bg-[#FDECEC] hover:bg-[#FBDFDF] transition-colors"
               >
-                <GoTrash className="md:text-[18px] text-[16px]" />
+                <GoTrash className="text-[15px]" />
                 O'chirish
               </button>
             )}
             <button
               onClick={showModalPassword}
-              className="cursor-pointer text-yellow-500 border-yellow-500 md:px-5 px-3 md:py-2 py-1.5 border rounded-[8px] md:text-[14px] text-[12px] flex items-center md:gap-2 hover:bg-[#ffbc1218] transition-all duration-150"
+              className="cursor-pointer flex items-center gap-1.5 px-3.5 py-2.5 rounded-[10px] text-[13px] font-[500] text-[#B5820A] bg-[#FEF6E6] hover:bg-[#FCEDCB] transition-colors"
             >
-              <BiSolidEditAlt className="md:text-[18px] text-[16px]" />
+              <BiSolidEditAlt className="text-[15px]" />
               Parolini o'zgartirish
             </button>
             <button
               onClick={showModal}
-              className="cursor-pointer text-blue-500 border-blue-500 md:px-5 px-3 md:py-2 py-1.5 border rounded-[8px] md:text-[14px] text-[12px] flex items-center md:gap-2 hover:bg-[#E6F4FF] transition-all duration-150"
+              className="cursor-pointer flex items-center gap-1.5 px-3.5 py-2.5 rounded-[10px] text-[13px] font-[500] text-white bg-[#0D9488] hover:bg-[#0C8377] transition-colors"
             >
-              <BiSolidEditAlt className="md:text-[18px] text-[16px]" />
+              <BiSolidEditAlt className="text-[15px]" />
               Tahrirlash
             </button>
           </div>
@@ -884,7 +884,7 @@ export default function EmployeeInfo() {
                     0
                   )}
                   <span className="ms-1 text-[13px] font-[400] text-[#8F99A3]">
-                    bemor (oxirgi 30 kun)
+                    bemor (oxirgi 30 kun) · o'rtacha {avgPatientsPerDay.toFixed(1)}/kun
                   </span>
                 </h2>
               </div>
@@ -927,12 +927,7 @@ export default function EmployeeInfo() {
                       y={avgPatientsPerDay}
                       stroke="#D0D5DA"
                       strokeDasharray="4 4"
-                      label={{
-                        value: `O'rtacha: ${avgPatientsPerDay.toFixed(1)}/kun`,
-                        position: "insideTopLeft",
-                        fontSize: 11,
-                        fill: "#8F99A3",
-                      }}
+                      ifOverflow="extendDomain"
                     />
                   )}
                   <Bar dataKey="patients" radius={[4, 4, 0, 0]} maxBarSize={28}>
