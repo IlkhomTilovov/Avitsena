@@ -529,6 +529,18 @@ export interface UpdateFinanceCategoryPayload {
   archived?: boolean;
 }
 
+export interface SupportMessageItem {
+  id: string;
+  clinic: string;
+  clinic_name: string;
+  user_fio: string | null;
+  user_phone: string | null;
+  user_role: string | null;
+  message: string;
+  delivered: boolean;
+  created_at: string;
+}
+
 export const OneMedAdmin = {
   authLogin: async (obj: { phone: string; password: string }) => {
     const response = await axios.post(`${baseApi}/v1/auth/login`, obj, {
@@ -1248,6 +1260,28 @@ export const OneMedAdmin = {
         },
       }
     );
+    return response.data;
+  },
+
+  getSupportMessages: async (
+    page: number,
+    per_page?: number,
+    clinic?: string
+  ): Promise<{
+    success: boolean;
+    data: SupportMessageItem[];
+    meta: { total_pages: number; total_items: number; current_page: number };
+  }> => {
+    const response = await api.get(`${baseApi}/v1/support/messages`, {
+      params: {
+        page: page || undefined,
+        per_page: per_page || undefined,
+        clinic: clinic || undefined,
+      },
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
     return response.data;
   },
 };

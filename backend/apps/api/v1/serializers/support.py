@@ -33,3 +33,44 @@ class SupportMessageCreateSerializer(serializers.ModelSerializer):
             user=request.user,
             **validated_data
         )
+
+
+class SupportMessageListSerializer(serializers.ModelSerializer):
+
+    clinic_name = serializers.CharField(
+        source='clinic.name',
+        read_only=True
+    )
+
+    user_fio = serializers.CharField(
+        source='user.fio',
+        read_only=True,
+        default=None
+    )
+
+    user_phone = serializers.CharField(
+        source='user.phone',
+        read_only=True,
+        default=None
+    )
+
+    user_role = serializers.CharField(
+        source='user.get_role_display',
+        read_only=True,
+        default=None
+    )
+
+    class Meta:
+
+        model = SupportMessage
+        fields = (
+            'id',
+            'clinic',
+            'clinic_name',
+            'user_fio',
+            'user_phone',
+            'user_role',
+            'message',
+            'delivered',
+            'created_at'
+        )

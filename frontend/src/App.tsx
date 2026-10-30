@@ -19,6 +19,7 @@ import Services from "./pages/Services";
 import EmployeeInfo from "./components/EmployeeInfo";
 import SettingDoctor from "./pages/SettingDoctor";
 import Moliya from "./pages/Moliya";
+import SupportMessages from "./pages/SupportMessages";
 
 function App() {
   return (
@@ -205,6 +206,14 @@ function App() {
             element={
               <PriviteRote>
                 <Clinics />
+              </PriviteRote>
+            }
+          />
+          <Route
+            path="murojaatlar"
+            element={
+              <PriviteRote>
+                <SupportMessages />
               </PriviteRote>
             }
           />

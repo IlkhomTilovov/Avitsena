@@ -1,6 +1,6 @@
 import { useLocation, useNavigate } from "react-router-dom";
 import { Menu } from "antd";
-import { HiOutlineBuildingOffice2 } from "react-icons/hi2";
+import { HiOutlineBuildingOffice2, HiOutlineChatBubbleLeftRight } from "react-icons/hi2";
 import { FiLogOut } from "react-icons/fi";
 import { MenuFoldOutlined, MenuUnfoldOutlined } from "@ant-design/icons";
 import { useCreateContext } from "../context/ContextApi";
@@ -23,6 +23,11 @@ export default function SidebarSuperAdmin() {
       key: "clinics",
       icon: <HiOutlineBuildingOffice2 />,
       label: "Klinikalar",
+    },
+    {
+      key: "murojaatlar",
+      icon: <HiOutlineChatBubbleLeftRight />,
+      label: "Murojaatlar",
     },
   ];
 
