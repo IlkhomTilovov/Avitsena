@@ -107,9 +107,9 @@ export default function Sidebar() {
         } px-2 pb-5 mb-2 border-b border-[#F0F2F3]`}
       >
         <div className="flex items-center gap-3">
-          <img loading="lazy" src={logo} alt="" className="w-[35px] shrink-0" />
+          <img loading="lazy" src={logo} alt="" className="w-[28px] shrink-0" />
           {!collapsed && (
-            <img loading="lazy" src={logoText} alt="One Med" className="h-[24px]" />
+            <img loading="lazy" src={logoText} alt="One Med" className="h-[18px]" />
           )}
         </div>
 
