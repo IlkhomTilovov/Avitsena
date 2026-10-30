@@ -42,6 +42,8 @@ from apps.api.v1.views import (
     FinanceSummaryView,
     FinanceTransactionsListView,
     FinanceExportView,
+    FinanceCategoryListCreateView,
+    FinanceCategoryDetailView,
     ExpenseCreateView,
     ExpenseDetailView
 )
@@ -92,6 +94,8 @@ urlpatterns = [
     path('finance/summary', FinanceSummaryView.as_view(), name='finance_summary'),
     path('finance/transactions', FinanceTransactionsListView.as_view(), name='finance_transactions'),
     path('finance/transactions/export', FinanceExportView.as_view(), name='finance_export'),
+    path('finance/categories', FinanceCategoryListCreateView.as_view(), name='finance_category_list_create'),
+    path('finance/categories/<uuid:id>', FinanceCategoryDetailView.as_view(), name='finance_category_detail'),
     path('finance/expenses', ExpenseCreateView.as_view(), name='finance_expense_create'),
     path('finance/expenses/<uuid:id>', ExpenseDetailView.as_view(), name='finance_expense_detail')
 ]

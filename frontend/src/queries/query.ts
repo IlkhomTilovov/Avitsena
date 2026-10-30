@@ -494,6 +494,41 @@ export interface CreateExpensePayload {
   date?: string;
 }
 
+export interface FinanceCategory {
+  id: string;
+  type: "kirim" | "chiqim";
+  type_display: string;
+  name: string;
+  icon: string;
+  color: string;
+  is_system: boolean;
+  archived: boolean;
+  created_at: string;
+  amount: number;
+  count: number;
+}
+
+export interface FinanceCategoryFilters {
+  type?: "kirim" | "chiqim";
+  date_from?: string;
+  date_to?: string;
+  include_archived?: boolean;
+}
+
+export interface CreateFinanceCategoryPayload {
+  type: "kirim" | "chiqim";
+  name: string;
+  icon: string;
+  color: string;
+}
+
+export interface UpdateFinanceCategoryPayload {
+  name?: string;
+  icon?: string;
+  color?: string;
+  archived?: boolean;
+}
+
 export const OneMedAdmin = {
   authLogin: async (obj: { phone: string; password: string }) => {
     const response = await axios.post(`${baseApi}/v1/auth/login`, obj, {
@@ -1152,6 +1187,52 @@ export const OneMedAdmin = {
 
   deleteExpense: async (id: string): Promise<DeleteResponse> => {
     const response = await api.delete(`${baseApi}/v1/finance/expenses/${id}`);
+    return response.data;
+  },
+
+  financeCategories: async (
+    filters: FinanceCategoryFilters
+  ): Promise<{
+    success: boolean;
+    data: { date_from: string; date_to: string; categories: FinanceCategory[] };
+  }> => {
+    const response = await api.get(`${baseApi}/v1/finance/categories`, {
+      params: cleanFinanceFilters(filters as FinanceFilters),
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+    return response.data;
+  },
+
+  createFinanceCategory: async (
+    payload: CreateFinanceCategoryPayload
+  ): Promise<{ success: boolean; data: FinanceCategory }> => {
+    const response = await api.post(
+      `${baseApi}/v1/finance/categories`,
+      payload,
+      {
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    );
+    return response.data;
+  },
+
+  updateFinanceCategory: async (
+    id: string,
+    payload: UpdateFinanceCategoryPayload
+  ): Promise<{ success: boolean; data: FinanceCategory }> => {
+    const response = await api.patch(
+      `${baseApi}/v1/finance/categories/${id}`,
+      payload,
+      {
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    );
     return response.data;
   },
 };

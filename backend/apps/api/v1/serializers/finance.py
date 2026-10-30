@@ -1,11 +1,110 @@
 from rest_framework import serializers
-from apps.finance.models import Expense
+from apps.finance.models import Expense, FinanceCategory
+from apps.shared.choices import FinanceTransactionType
+
+
+class FinanceCategorySerializer(serializers.ModelSerializer):
+
+    type_display = serializers.CharField(
+        source='get_type_display',
+        read_only=True
+    )
+
+    class Meta:
+
+        model = FinanceCategory
+        fields = (
+            'id',
+            'type',
+            'type_display',
+            'name',
+            'icon',
+            'color',
+            'is_system',
+            'archived',
+            'created_at'
+        )
+
+
+class FinanceCategoryCreateSerializer(serializers.ModelSerializer):
+
+    class Meta:
+
+        model = FinanceCategory
+        fields = (
+            'id',
+            'type',
+            'name',
+            'icon',
+            'color'
+        )
+
+    def validate_name(self, value):
+
+        value = value.strip()
+
+        if not value:
+
+            raise serializers.ValidationError("Nomi kiritilishi kerak.")
+
+        return value
+
+    def create(self, validated_data):
+
+        request = self.context['request']
+
+        validated_data.update({
+            'clinic': request.user.clinic
+        })
+
+        return FinanceCategory.objects.create(**validated_data)
+
+
+class FinanceCategoryUpdateSerializer(serializers.ModelSerializer):
+
+    class Meta:
+
+        model = FinanceCategory
+        fields = (
+            'name',
+            'icon',
+            'color',
+            'archived'
+        )
+
+    def validate_name(self, value):
+
+        value = value.strip()
+
+        if not value:
+
+            raise serializers.ValidationError("Nomi kiritilishi kerak.")
+
+        return value
+
+    def validate(self, attrs):
+
+        if self.instance and self.instance.is_system:
+
+            attrs.pop('archived', None)
+
+        return attrs
 
 
 class ExpenseSerializer(serializers.ModelSerializer):
 
-    category_display = serializers.CharField(
-        source='get_category_display',
+    category_name = serializers.CharField(
+        source='category.name',
+        read_only=True
+    )
+
+    category_icon = serializers.CharField(
+        source='category.icon',
+        read_only=True
+    )
+
+    category_color = serializers.CharField(
+        source='category.color',
         read_only=True
     )
 
@@ -27,7 +126,9 @@ class ExpenseSerializer(serializers.ModelSerializer):
         fields = (
             'id',
             'category',
-            'category_display',
+            'category_name',
+            'category_icon',
+            'category_color',
             'title',
             'amount',
             'payment_method',
@@ -66,6 +167,24 @@ class ExpenseCreateSerializer(serializers.ModelSerializer):
 
         return value
 
+    def validate_category(self, value):
+
+        request = self.context['request']
+
+        if value.clinic_id != request.user.clinic_id:
+
+            raise serializers.ValidationError("Kategoriya topilmadi.")
+
+        if value.type != FinanceTransactionType.CHIQIM:
+
+            raise serializers.ValidationError("Kategoriya chiqim turida bo'lishi kerak.")
+
+        if value.archived:
+
+            raise serializers.ValidationError("Bu kategoriya arxivlangan.")
+
+        return value
+
     def create(self, validated_data):
 
         request = self.context['request']
@@ -97,5 +216,19 @@ class ExpenseUpdateSerializer(serializers.ModelSerializer):
         if value <= 0:
 
             raise serializers.ValidationError("Summa noldan katta bo'lishi kerak.")
+
+        return value
+
+    def validate_category(self, value):
+
+        request = self.context['request']
+
+        if value.clinic_id != request.user.clinic_id:
+
+            raise serializers.ValidationError("Kategoriya topilmadi.")
+
+        if value.type != FinanceTransactionType.CHIQIM:
+
+            raise serializers.ValidationError("Kategoriya chiqim turida bo'lishi kerak.")
 
         return value

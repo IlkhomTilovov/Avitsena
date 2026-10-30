@@ -2,7 +2,7 @@ import csv
 import uuid
 from datetime import datetime, timedelta
 
-from django.db.models import Sum, Q
+from django.db.models import Sum, Q, Count
 from django.http import HttpResponse
 from django.utils import timezone
 from drf_spectacular.types import OpenApiTypes
@@ -14,15 +14,67 @@ from rest_framework.views import APIView
 from apps.api.v1.serializers import (
     ExpenseSerializer,
     ExpenseCreateSerializer,
-    ExpenseUpdateSerializer
+    ExpenseUpdateSerializer,
+    FinanceCategorySerializer,
+    FinanceCategoryCreateSerializer,
+    FinanceCategoryUpdateSerializer
 )
-from apps.finance.models import Expense
+from apps.finance.models import Expense, FinanceCategory
 from apps.patients.models import PatientVisit
-from apps.shared.choices import PaymentMethod
+from apps.shared.choices import PaymentMethod, FinanceTransactionType, FinanceCategoryColor
 from apps.shared.pagination import CustomPagination
 from apps.shared.permissions import IsRegistratorOrAdmin
 from apps.shared.response import CustomResponse
 from apps.shared.utils import get_current_month_data
+
+
+DEFAULT_KIRIM_CATEGORIES = [
+    {'name': "Qabul to'lovlari", 'icon': 'calendar', 'color': FinanceCategoryColor.TEAL, 'is_system': True},
+    {'name': 'Laboratoriya tahlillari', 'icon': 'flask', 'color': FinanceCategoryColor.CYAN},
+    {'name': 'Dorixona savdosi', 'icon': 'shopping-bag', 'color': FinanceCategoryColor.BLUE},
+    {'name': "Sug'urta to'lovlari", 'icon': 'shield', 'color': FinanceCategoryColor.PURPLE},
+    {'name': "Investitsiya / qo'shimcha mablag'", 'icon': 'trending-up', 'color': FinanceCategoryColor.ORANGE},
+    {'name': 'Boshqa kirim', 'icon': 'dots', 'color': FinanceCategoryColor.GRAY},
+]
+
+DEFAULT_CHIQIM_CATEGORIES = [
+    {'name': 'Dori va materiallar', 'icon': 'pill', 'color': FinanceCategoryColor.TEAL},
+    {'name': "Jihozlar ta'miri", 'icon': 'tool', 'color': FinanceCategoryColor.BLUE},
+    {'name': 'Ijara', 'icon': 'home', 'color': FinanceCategoryColor.PURPLE},
+    {'name': 'Ish haqi', 'icon': 'users', 'color': FinanceCategoryColor.ORANGE},
+    {'name': 'Kommunal xizmatlar', 'icon': 'flash', 'color': FinanceCategoryColor.CYAN},
+    {'name': 'Reklama', 'icon': 'package', 'color': FinanceCategoryColor.RED},
+    {'name': 'Soliq va yig\'imlar', 'icon': 'shield', 'color': FinanceCategoryColor.GRAY},
+    {'name': 'Boshqa', 'icon': 'dots', 'color': FinanceCategoryColor.GRAY},
+]
+
+
+def _ensure_default_categories(clinic):
+
+    if FinanceCategory.objects.filter(clinic=clinic).exists():
+
+        return
+
+    categories = []
+
+    for item in DEFAULT_KIRIM_CATEGORIES:
+
+        categories.append(FinanceCategory(
+            clinic=clinic,
+            type=FinanceTransactionType.KIRIM,
+            is_system=item.get('is_system', False),
+            **{k: v for k, v in item.items() if k != 'is_system'}
+        ))
+
+    for item in DEFAULT_CHIQIM_CATEGORIES:
+
+        categories.append(FinanceCategory(
+            clinic=clinic,
+            type=FinanceTransactionType.CHIQIM,
+            **item
+        ))
+
+    FinanceCategory.objects.bulk_create(categories)
 
 
 FINANCE_FILTER_PARAMETERS = [
@@ -32,7 +84,7 @@ FINANCE_FILTER_PARAMETERS = [
     OpenApiParameter(name='doctor', description='Comma separated doctor ids', location=OpenApiParameter.QUERY, type=OpenApiTypes.STR),
     OpenApiParameter(name='service', description='Comma separated service ids', location=OpenApiParameter.QUERY, type=OpenApiTypes.STR),
     OpenApiParameter(name='payment_method', description='Comma separated payment methods', location=OpenApiParameter.QUERY, type=OpenApiTypes.STR),
-    OpenApiParameter(name='category', description='Expense category code or service-category id', location=OpenApiParameter.QUERY, type=OpenApiTypes.STR),
+    OpenApiParameter(name='category', description='Service-category id (income) or finance-category id (expense)', location=OpenApiParameter.QUERY, type=OpenApiTypes.STR),
     OpenApiParameter(name='status', description='Transaction status', location=OpenApiParameter.QUERY, type=OpenApiTypes.STR),
     OpenApiParameter(name='cashier', description='Comma separated cashier ids', location=OpenApiParameter.QUERY, type=OpenApiTypes.STR),
     OpenApiParameter(name='search', description='Search', location=OpenApiParameter.QUERY, type=OpenApiTypes.STR),
@@ -93,7 +145,7 @@ def _get_finance_querysets(user, request):
             clinic=user.clinic,
             date__range=(date_from, date_to)
         ) \
-        .select_related('created_by')
+        .select_related('created_by', 'category')
 
     doctor_ids = _csv_list(request, 'doctor')
 
@@ -134,16 +186,22 @@ def _get_finance_querysets(user, request):
 
     if category:
 
-        expense_qs = expense_qs.filter(category=category)
-
         try:
 
             category_uuid = uuid.UUID(str(category))
-            income_qs = income_qs.filter(services__category_id=category_uuid)
 
         except (ValueError, TypeError):
 
             income_qs = income_qs.none()
+            expense_qs = expense_qs.none()
+
+        else:
+
+            # category may be a service-category id (income side) or a
+            # FinanceCategory id (expense side); each filter is a safe
+            # no-op on the model it doesn't apply to.
+            income_qs = income_qs.filter(services__category_id=category_uuid)
+            expense_qs = expense_qs.filter(category_id=category_uuid)
 
     search = params.get('search')
 
@@ -212,7 +270,7 @@ def _expense_to_row(expense) -> dict:
         'title': expense.title,
         'subtitle': "Qo'lda kiritilgan chiqim",
         'doctor': None,
-        'category': expense.get_category_display(),
+        'category': expense.category.name,
         'payment_method': expense.payment_method,
         'payment_method_display': expense.get_payment_method_display() if expense.payment_method else None,
         'cashier': getattr(expense.created_by, 'fio', None),
@@ -429,6 +487,156 @@ class FinanceExportView(APIView):
             ])
 
         return response
+
+
+class FinanceCategoryListCreateView(APIView):
+
+    permission_classes = (IsRegistratorOrAdmin, )
+    serializer_class = FinanceCategorySerializer
+
+    @extend_schema(
+        tags=['finance'],
+        parameters=[
+            OpenApiParameter(name='type', description='kirim | chiqim', location=OpenApiParameter.QUERY, type=OpenApiTypes.STR),
+            OpenApiParameter(name='date_from', description='YYYY-MM-DD', location=OpenApiParameter.QUERY, type=OpenApiTypes.STR),
+            OpenApiParameter(name='date_to', description='YYYY-MM-DD', location=OpenApiParameter.QUERY, type=OpenApiTypes.STR),
+            OpenApiParameter(name='include_archived', location=OpenApiParameter.QUERY, type=OpenApiTypes.BOOL),
+        ]
+    )
+    def get(self, request):
+
+        user = request.user
+
+        _ensure_default_categories(user.clinic)
+
+        date_from, date_to = _get_date_range(request)
+
+        type_param = request.query_params.get('type')
+
+        include_archived = request.query_params.get('include_archived') == 'true'
+
+        queryset = FinanceCategory.objects.filter(clinic=user.clinic)
+
+        if not include_archived:
+
+            queryset = queryset.filter(archived=False)
+
+        if type_param:
+
+            queryset = queryset.filter(type=type_param)
+
+        categories = list(queryset)
+
+        income_total = PatientVisit.objects \
+            .filter(patient__clinic=user.clinic, created_at__date__range=(date_from, date_to)) \
+            .aggregate(total=Sum('total_price'), count=Count('id'))
+
+        expense_totals = {
+            item['category_id']: item
+            for item in Expense.objects
+            .filter(clinic=user.clinic, date__range=(date_from, date_to))
+            .values('category_id')
+            .annotate(total=Sum('amount'), count=Count('id'))
+        }
+
+        data = []
+
+        for category in categories:
+
+            if category.is_system:
+
+                amount = income_total['total'] or 0
+                count = income_total['count'] or 0
+
+            elif category.type == FinanceTransactionType.CHIQIM:
+
+                totals = expense_totals.get(category.id)
+                amount = totals['total'] if totals else 0
+                count = totals['count'] if totals else 0
+
+            else:
+
+                amount = 0
+                count = 0
+
+            item = self.serializer_class(category).data
+            item['amount'] = amount
+            item['count'] = count
+            data.append(item)
+
+        return CustomResponse(data={
+            'date_from': date_from,
+            'date_to': date_to,
+            'categories': data
+        })
+
+    @extend_schema(tags=['finance'], request=FinanceCategoryCreateSerializer, responses={status.HTTP_201_CREATED: FinanceCategorySerializer})
+    def post(self, request):
+
+        _ensure_default_categories(request.user.clinic)
+
+        serializer = FinanceCategoryCreateSerializer(
+            data=request.data,
+            context={'request': request}
+        )
+
+        if serializer.is_valid():
+
+            category = serializer.save()
+
+            return CustomResponse(
+                message='Category created',
+                data=self.serializer_class(category).data,
+                status=status.HTTP_201_CREATED
+            )
+
+        return CustomResponse(
+            success=False,
+            message=str(serializer.errors),
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+
+class FinanceCategoryDetailView(APIView):
+
+    permission_classes = (IsRegistratorOrAdmin, )
+    serializer_class = FinanceCategorySerializer
+
+    def get_object(self):
+
+        try:
+
+            return FinanceCategory.objects.get(
+                id=self.kwargs['id'],
+                clinic=self.request.user.clinic
+            )
+
+        except FinanceCategory.DoesNotExist:
+
+            raise NotFound('Category not found')
+
+    @extend_schema(tags=['finance'], request=FinanceCategoryUpdateSerializer)
+    def patch(self, request, id):
+
+        category = self.get_object()
+
+        serializer = FinanceCategoryUpdateSerializer(
+            category,
+            request.data,
+            partial=True
+        )
+
+        if serializer.is_valid():
+
+            category = serializer.save()
+
+            return CustomResponse(data=self.serializer_class(category).data)
+
+        return CustomResponse(
+            success=False,
+            message=str(serializer.errors),
+            status=status.HTTP_400_BAD_REQUEST
+        )
 
 
 class ExpenseCreateView(APIView):

@@ -27,6 +27,7 @@ import {
   FinanceFilters,
   FinanceTransaction,
 } from "../queries/query";
+import FinanceCategoriesDrawer from "../components/FinanceCategoriesDrawer";
 import "../App.css";
 
 const { RangePicker } = DatePicker;
@@ -36,14 +37,6 @@ const PAYMENT_METHODS = [
   { value: "card", label: "Karta" },
   { value: "click_payme", label: "Click/Payme" },
   { value: "transfer", label: "O'tkazma" },
-];
-
-const EXPENSE_CATEGORIES = [
-  { value: "medicine", label: "Dori va materiallar" },
-  { value: "equipment", label: "Jihozlar ta'miri" },
-  { value: "rent", label: "Ijara" },
-  { value: "salary", label: "Ish haqi" },
-  { value: "other", label: "Boshqa" },
 ];
 
 const STATUS_OPTIONS = [
@@ -116,6 +109,7 @@ export default function Moliya() {
   const perPage = 10;
 
   const [isExpenseModalOpen, setIsExpenseModalOpen] = useState(false);
+  const [isCategoriesDrawerOpen, setIsCategoriesDrawerOpen] = useState(false);
   const [expenseForm] = Form.useForm();
 
   const filters: FinanceFilters = useMemo(
@@ -180,6 +174,14 @@ export default function Moliya() {
     (c.services || []).map((s: any) => ({ id: s.id, name: s.name }))
   );
 
+  const { data: chiqimCategoriesData } = useQuery({
+    queryKey: ["financeCategories", "chiqim-options"],
+    queryFn: () => OneMedAdmin.financeCategories({ type: "chiqim" }),
+    staleTime: 60 * 1000,
+  });
+
+  const chiqimCategories = chiqimCategoriesData?.data?.categories || [];
+
   const summary = summaryData?.data;
   const transactions: FinanceTransaction[] = txData?.data?.results || [];
   const meta = txData?.data?.meta;
@@ -239,8 +241,8 @@ export default function Moliya() {
     if (!category) return null;
     const svcCategory = serviceCategories.find((c: any) => c.id === category);
     if (svcCategory) return svcCategory.name;
-    const expCategory = EXPENSE_CATEGORIES.find((c) => c.value === category);
-    return expCategory?.label || category;
+    const expCategory = chiqimCategories.find((c) => c.id === category);
+    return expCategory?.name || category;
   })();
 
   const chips: { key: string; label: string; onClear: () => void }[] = [];
@@ -335,9 +337,7 @@ export default function Moliya() {
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <button
-            onClick={() =>
-              alert("Kategoriyalar bo'limi tez orada qo'shiladi")
-            }
+            onClick={() => setIsCategoriesDrawerOpen(true)}
             className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-[10px] border border-[#E0E6EB] text-[13px] font-[500] text-[#44525C] hover:bg-[#F9FAFB] transition-colors cursor-pointer"
           >
             <LuLayers /> Kategoriyalar
@@ -596,9 +596,9 @@ export default function Moliya() {
             ))}
           </Select.OptGroup>
           <Select.OptGroup label="Chiqim turkumlari">
-            {EXPENSE_CATEGORIES.map((c) => (
-              <Select.Option key={c.value} value={c.value} label={c.label}>
-                {c.label}
+            {chiqimCategories.map((c) => (
+              <Select.Option key={c.id} value={c.id} label={c.name}>
+                {c.name}
               </Select.Option>
             ))}
           </Select.OptGroup>
@@ -824,7 +824,10 @@ export default function Moliya() {
             label="Kategoriya"
             rules={[{ required: true, message: "Kategoriya tanlanishi kerak!" }]}
           >
-            <Select options={EXPENSE_CATEGORIES} placeholder="Tanlang" />
+            <Select
+              options={chiqimCategories.map((c) => ({ value: c.id, label: c.name }))}
+              placeholder="Tanlang"
+            />
           </Form.Item>
 
           <Form.Item
@@ -865,6 +868,11 @@ export default function Moliya() {
           </button>
         </Form>
       </Modal>
+
+      <FinanceCategoriesDrawer
+        open={isCategoriesDrawerOpen}
+        onClose={() => setIsCategoriesDrawerOpen(false)}
+      />
     </div>
   );
 }

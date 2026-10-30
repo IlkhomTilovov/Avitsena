@@ -4,10 +4,59 @@ from django.utils.translation import gettext_lazy as _
 from apps.shared.models import AbstractBaseModel
 from apps.shared.choices import (
     PaymentMethod,
-    ExpenseCategory,
     ExpenseStatus,
+    FinanceTransactionType,
+    FinanceCategoryColor,
     UserRole
 )
+
+
+class FinanceCategory(AbstractBaseModel):
+
+    clinic = models.ForeignKey(
+        'clinics.Clinic',
+        on_delete=models.CASCADE,
+        related_name='finance_categories'
+    )
+
+    type = models.CharField(
+        max_length=10,
+        choices=FinanceTransactionType.choices
+    )
+
+    name = models.CharField(
+        max_length=150
+    )
+
+    icon = models.CharField(
+        max_length=30,
+        default='tag'
+    )
+
+    color = models.CharField(
+        max_length=10,
+        choices=FinanceCategoryColor.choices,
+        default=FinanceCategoryColor.GRAY
+    )
+
+    is_system = models.BooleanField(
+        default=False
+    )
+
+    archived = models.BooleanField(
+        default=False
+    )
+
+    class Meta:
+
+        db_table = 'finance_categories'
+        verbose_name = _('Finance category')
+        verbose_name_plural = _('Finance categories')
+        ordering = ('-is_system', 'name')
+        indexes = [
+            models.Index(fields=['clinic', 'type']),
+            models.Index(fields=['archived'])
+        ]
 
 
 class Expense(AbstractBaseModel):
@@ -18,9 +67,13 @@ class Expense(AbstractBaseModel):
         related_name='expenses'
     )
 
-    category = models.CharField(
-        max_length=15,
-        choices=ExpenseCategory.choices
+    category = models.ForeignKey(
+        FinanceCategory,
+        on_delete=models.PROTECT,
+        related_name='expenses',
+        limit_choices_to={
+            'type': FinanceTransactionType.CHIQIM
+        }
     )
 
     title = models.CharField(

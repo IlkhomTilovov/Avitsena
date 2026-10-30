@@ -37,3 +37,18 @@ class ExpenseCategory(TextChoices):
 class ExpenseStatus(TextChoices):
     COMPLETED = 'completed', _('Bajarildi')
     CANCELLED = 'cancelled', _('Bekor qilindi')
+
+
+class FinanceTransactionType(TextChoices):
+    KIRIM = 'kirim', _('Kirim')
+    CHIQIM = 'chiqim', _('Chiqim')
+
+
+class FinanceCategoryColor(TextChoices):
+    TEAL = 'teal', _('Teal')
+    CYAN = 'cyan', _('Cyan')
+    BLUE = 'blue', _('Blue')
+    PURPLE = 'purple', _('Purple')
+    ORANGE = 'orange', _('Orange')
+    RED = 'red', _('Red')
+    GRAY = 'gray', _('Gray')
