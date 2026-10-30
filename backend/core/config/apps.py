@@ -13,6 +13,7 @@ PROJECT_APPS = [
     'apps.users',
     'apps.services',
     'apps.patients',
+    'apps.finance',
     'apps.shared',
 ]
 

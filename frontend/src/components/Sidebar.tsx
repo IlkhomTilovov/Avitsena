@@ -1,7 +1,7 @@
 import { useLocation, useNavigate } from "react-router-dom";
 import { useQuery } from "react-query";
 import { IoHomeOutline, IoSettingsOutline } from "react-icons/io5";
-import { LuUsers, LuUserPlus } from "react-icons/lu";
+import { LuUsers, LuUserPlus, LuWallet } from "react-icons/lu";
 import { TbReportMedical, TbCategoryPlus } from "react-icons/tb";
 import { MdOutlineDateRange } from "react-icons/md";
 import { FiLogOut, FiHeadphones } from "react-icons/fi";
@@ -58,6 +58,7 @@ export default function Sidebar() {
 
   const systemItems: NavItem[] = [
     { key: "services", path: "/services", icon: <TbCategoryPlus />, label: "Xizmatlar" },
+    { key: "moliya", path: "/moliya", icon: <LuWallet />, label: "Moliya" },
     { key: "settings", path: "/settings", icon: <IoSettingsOutline />, label: "Sozlamalar" },
   ];
 

@@ -36,7 +36,14 @@ from apps.api.v1.views import (
     PatientVisitDetailView,
     VisitRecipeCreateView,
     VisitRecipeDetailView,
-    TodayVisitsView
+    TodayVisitsView,
+
+    #finance
+    FinanceSummaryView,
+    FinanceTransactionsListView,
+    FinanceExportView,
+    ExpenseCreateView,
+    ExpenseDetailView
 )
 from django.urls import path
 
@@ -79,5 +86,12 @@ urlpatterns = [
     path('patients/<uuid:id>', PatientDetailView.as_view(), name='patient_detail'),
     path('patients/<uuid:id>/analyses', PatientAnalysisListCreateView.as_view(), name='patient_analysis_list_create'),
     path('patients/<uuid:id>/visits', PatientVisitListCreateView.as_view(), name='patient_visit_lis_create'),
-    path('patients/<uuid:id>/visits/<uuid:visit_id>', PatientVisitDetailView.as_view(), name='patient_visit_detail')
+    path('patients/<uuid:id>/visits/<uuid:visit_id>', PatientVisitDetailView.as_view(), name='patient_visit_detail'),
+
+    # finance
+    path('finance/summary', FinanceSummaryView.as_view(), name='finance_summary'),
+    path('finance/transactions', FinanceTransactionsListView.as_view(), name='finance_transactions'),
+    path('finance/transactions/export', FinanceExportView.as_view(), name='finance_export'),
+    path('finance/expenses', ExpenseCreateView.as_view(), name='finance_expense_create'),
+    path('finance/expenses/<uuid:id>', ExpenseDetailView.as_view(), name='finance_expense_detail')
 ]

@@ -7,6 +7,7 @@ from apps.patients.choices import (
 )
 from apps.shared.choices import UserGender, UserRole
 from apps.shared.choices import StatusTextChoices
+from apps.shared.choices import PaymentMethod
 from django.utils.translation import gettext_lazy as _
 from apps.patients.utils import upload_to_uuid
 import uuid
@@ -288,6 +289,27 @@ class PatientVisit(AbstractBaseModel):
     status = models.CharField(
         choices=PatientVisitStatus.choices,
         default=PatientVisitStatus.PENDING
+    )
+
+    payment_method = models.CharField(
+        max_length=15,
+        choices=PaymentMethod.choices,
+        blank=True,
+        null=True
+    )
+
+    cashier = models.ForeignKey(
+        'users.CustomUser',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='collected_visits',
+        limit_choices_to={
+            'role__in': [
+                UserRole.ADMIN,
+                UserRole.REGISTRATOR
+            ]
+        }
     )
 
     class Meta:

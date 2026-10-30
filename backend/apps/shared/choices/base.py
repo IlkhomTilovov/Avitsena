@@ -17,3 +17,23 @@ class UserRole(TextChoices):
 class StatusTextChoices(TextChoices):
     ACTIVE = 'active', _('Active')
     INACTIVE = 'inactive', _('Inactive')
+
+
+class PaymentMethod(TextChoices):
+    CASH = 'cash', _('Naqd')
+    CARD = 'card', _('Karta')
+    CLICK_PAYME = 'click_payme', _('Click/Payme')
+    TRANSFER = 'transfer', _("O'tkazma")
+
+
+class ExpenseCategory(TextChoices):
+    MEDICINE = 'medicine', _('Dori va materiallar')
+    EQUIPMENT = 'equipment', _("Jihozlar ta'miri")
+    RENT = 'rent', _('Ijara')
+    SALARY = 'salary', _('Ish haqi')
+    OTHER = 'other', _('Boshqa')
+
+
+class ExpenseStatus(TextChoices):
+    COMPLETED = 'completed', _('Bajarildi')
+    CANCELLED = 'cancelled', _('Bekor qilindi')

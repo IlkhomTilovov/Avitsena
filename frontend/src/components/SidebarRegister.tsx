@@ -7,6 +7,7 @@ import { useCreateContext } from "../context/ContextApi";
 import { useLocation, useNavigate } from "react-router-dom";
 import { IoSettingsOutline } from "react-icons/io5";
 import { PiUserListBold } from "react-icons/pi";
+import { LuWallet } from "react-icons/lu";
 import logo from "../../public/images/logo.svg";
 import logoText from "../../public/images/logo-text.svg";
 import "../App.css";
@@ -25,6 +26,7 @@ export default function SidebarRegister() {
   const items: MenuItem[] = [
     { key: "registration", icon: <RiApps2AddLine />, label: "Ro'yhatga olish" },
     { key: "patients", icon: <PiUserListBold />, label: "Bemorlar ro'yhati" },
+    { key: "moliya", icon: <LuWallet />, label: "Moliya" },
     { key: "settings", icon: <IoSettingsOutline />, label: "Sozlamalar " },
   ];
 

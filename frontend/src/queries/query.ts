@@ -398,6 +398,102 @@ export type DeleteResponse = {
   success?: boolean;
 };
 
+export interface FinanceFilters {
+  date_from?: string;
+  date_to?: string;
+  type?: "kirim" | "chiqim";
+  doctor?: string;
+  service?: string;
+  payment_method?: string;
+  category?: string;
+  status?: string;
+  cashier?: string;
+  search?: string;
+  page?: number;
+  per_page?: number;
+}
+
+function cleanFinanceFilters(filters: FinanceFilters) {
+  const params: Record<string, string | number> = {};
+
+  Object.entries(filters).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== "") {
+      params[key] = value;
+    }
+  });
+
+  return params;
+}
+
+export interface FinanceChange {
+  percentage: number | null;
+  amount: number | null;
+}
+
+export interface FinancePaymentMethodBreakdown {
+  value: string;
+  label: string;
+  amount: number;
+  percentage: number;
+}
+
+export interface FinanceSummary {
+  date_from: string;
+  date_to: string;
+  total_income: number;
+  total_expense: number;
+  balance: number;
+  income_change: FinanceChange;
+  expense_change: FinanceChange;
+  income_count: number;
+  expense_count: number;
+  payment_methods: FinancePaymentMethodBreakdown[];
+}
+
+export interface FinanceTransaction {
+  id: string;
+  type: "kirim" | "chiqim";
+  date: string;
+  reference: string | null;
+  title: string;
+  subtitle: string;
+  doctor: string | null;
+  category: string | null;
+  payment_method: string | null;
+  payment_method_display: string | null;
+  cashier: string | null;
+  amount: number;
+  status: string;
+  status_display: string;
+}
+
+export interface FinanceTransactionsMeta {
+  total_pages: number;
+  total_items: number;
+  current_page: number;
+  income_count: number;
+  expense_count: number;
+  total_income_amount: number;
+  total_expense_amount: number;
+  balance: number;
+}
+
+export interface FinanceTransactionsResponse {
+  success: boolean;
+  data: {
+    results: FinanceTransaction[];
+    meta: FinanceTransactionsMeta;
+  };
+}
+
+export interface CreateExpensePayload {
+  category: string;
+  title: string;
+  amount: number;
+  payment_method?: string;
+  date?: string;
+}
+
 export const OneMedAdmin = {
   authLogin: async (obj: { phone: string; password: string }) => {
     const response = await axios.post(`${baseApi}/v1/auth/login`, obj, {
@@ -989,6 +1085,73 @@ export const OneMedAdmin = {
         },
       }
     );
+    return response.data;
+  },
+
+  // ---- Moliya (finance) ----
+
+  financeSummary: async (
+    filters: FinanceFilters
+  ): Promise<{ success: boolean; data: FinanceSummary }> => {
+    const response = await api.get(`${baseApi}/v1/finance/summary`, {
+      params: cleanFinanceFilters(filters),
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+    return response.data;
+  },
+
+  financeTransactions: async (
+    filters: FinanceFilters
+  ): Promise<FinanceTransactionsResponse> => {
+    const response = await api.get(`${baseApi}/v1/finance/transactions`, {
+      params: cleanFinanceFilters(filters),
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+    return response.data;
+  },
+
+  financeExport: async (filters: FinanceFilters): Promise<void> => {
+    const response = await api.get(
+      `${baseApi}/v1/finance/transactions/export`,
+      {
+        params: cleanFinanceFilters(filters),
+        responseType: "blob",
+      }
+    );
+
+    const disposition = response.headers["content-disposition"] as
+      | string
+      | undefined;
+    const match = disposition?.match(/filename="?([^"]+)"?/);
+    const filename = match ? match[1] : "moliya.csv";
+
+    const url = window.URL.createObjectURL(new Blob([response.data]));
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", filename);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+  },
+
+  createExpense: async (
+    payload: CreateExpensePayload
+  ): Promise<{ success: boolean; data: FinanceTransaction }> => {
+    const response = await api.post(`${baseApi}/v1/finance/expenses`, payload, {
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+    return response.data;
+  },
+
+  deleteExpense: async (id: string): Promise<DeleteResponse> => {
+    const response = await api.delete(`${baseApi}/v1/finance/expenses/${id}`);
     return response.data;
   },
 };

@@ -18,6 +18,7 @@ import Settings from "./pages/Settings";
 import Services from "./pages/Services";
 import EmployeeInfo from "./components/EmployeeInfo";
 import SettingDoctor from "./pages/SettingDoctor";
+import Moliya from "./pages/Moliya";
 
 function App() {
   return (
@@ -99,6 +100,14 @@ function App() {
               </PriviteRote>
             }
           />
+          <Route
+            path="/moliya"
+            element={
+              <PriviteRote>
+                <Moliya />
+              </PriviteRote>
+            }
+          />
         </Route>
 
         <Route
@@ -138,6 +147,14 @@ function App() {
             element={
               <PriviteRote>
                 <Settings />
+              </PriviteRote>
+            }
+          />
+          <Route
+            path="moliya"
+            element={
+              <PriviteRote>
+                <Moliya />
               </PriviteRote>
             }
           />
