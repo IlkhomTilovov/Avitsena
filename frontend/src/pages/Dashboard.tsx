@@ -30,6 +30,16 @@ type FlowPeriod = "weekly" | "monthly" | "yearly";
 
 const DOCTOR_COLORS = ["#8B5CF6", "#10B981", "#F59E0B", "#6366F1", "#EF4444", "#0EA5E9"];
 
+function formatCompactSom(value: number): string {
+  if (value >= 1_000_000) {
+    return `${(value / 1_000_000).toFixed(1)} mln so'm`;
+  }
+  if (value >= 1_000) {
+    return `${Math.round(value / 1_000).toLocaleString("uz-UZ")} ming so'm`;
+  }
+  return `${Math.round(value).toLocaleString("uz-UZ")} so'm`;
+}
+
 export default function Dashboard() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [statValueId, setStatValueId] = useState<number | string>(1);
@@ -223,7 +233,7 @@ export default function Dashboard() {
             icon={<FaDollarSign />}
             iconBg="bg-[#E9FBF4]"
             iconColor="text-[#0D9488]"
-            value={`${((visitsStats?.monthly_revenue ?? 0) / 1_000_000).toFixed(1)} mln so'm`}
+            value={formatCompactSom(visitsStats?.monthly_revenue ?? 0)}
             changeLabel={
               visitsStats?.change_from_last_month?.percentage != null
                 ? `${visitsStats.change_from_last_month.percentage}%`
