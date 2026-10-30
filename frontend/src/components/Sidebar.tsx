@@ -1,5 +1,7 @@
 import { useLocation, useNavigate } from "react-router-dom";
-import { useQuery } from "react-query";
+import { useMutation, useQuery } from "react-query";
+import { useState } from "react";
+import { Modal, Input, notification } from "antd";
 import { IoHomeOutline, IoSettingsOutline } from "react-icons/io5";
 import { LuUsers, LuUserPlus, LuWallet } from "react-icons/lu";
 import { TbReportMedical, TbCategoryPlus } from "react-icons/tb";
@@ -24,12 +26,31 @@ export default function Sidebar() {
   const { collapsed, setCollapsed } = useCreateContext();
   const navigate = useNavigate();
   const location = useLocation();
+  const [notifApi, contextHolder] = notification.useNotification();
+
+  const [isSupportModalOpen, setIsSupportModalOpen] = useState(false);
+  const [supportMessage, setSupportMessage] = useState("");
 
   const { data: allStatData } = useQuery({
     queryFn: () => OneMedAdmin.allStat(),
     queryKey: ["allStat"],
     staleTime: Infinity,
     cacheTime: Infinity,
+  });
+
+  const sendSupportMutation = useMutation({
+    mutationFn: OneMedAdmin.sendSupportMessage,
+    onSuccess: () => {
+      notifApi.success({ message: "Murojaatingiz yuborildi" });
+      setIsSupportModalOpen(false);
+      setSupportMessage("");
+    },
+    onError: () => {
+      notifApi.error({
+        message: "Xatolik",
+        description: "Murojaatni yuborib bo'lmadi, qayta urinib ko'ring",
+      });
+    },
   });
 
   const currentPath = "/" + (location.pathname.split("/")[1] || "dashboard");
@@ -142,7 +163,10 @@ export default function Sidebar() {
           </div>
           <p className="text-[13px] font-[600]">Yordam kerakmi?</p>
           <p className="text-[11px] text-white/60 mb-3">Texnik qo'llab-quvvatlash 24/7 ishlaydi</p>
-          <button className="w-full bg-[#0D9488] hover:bg-[#0C8377] transition-colors text-white text-[12px] font-[500] py-2 rounded-[8px] cursor-pointer">
+          <button
+            onClick={() => setIsSupportModalOpen(true)}
+            className="w-full bg-[#0D9488] hover:bg-[#0C8377] transition-colors text-white text-[12px] font-[500] py-2 rounded-[8px] cursor-pointer"
+          >
             Murojaat qilish
           </button>
         </div>
@@ -164,6 +188,30 @@ export default function Sidebar() {
         <FiLogOut />
         {!collapsed && <span className="text-[14px] font-[500]">Chiqish</span>}
       </button>
+
+      {contextHolder}
+      <Modal
+        title="Texnik yordamga murojaat"
+        open={isSupportModalOpen}
+        onCancel={() => setIsSupportModalOpen(false)}
+        onOk={() => sendSupportMutation.mutate(supportMessage)}
+        okText={sendSupportMutation.isLoading ? "Yuborilmoqda..." : "Yuborish"}
+        okButtonProps={{
+          disabled: !supportMessage.trim() || sendSupportMutation.isLoading,
+          className: "!bg-[#0D9488] hover:!bg-[#0C8377]",
+        }}
+        cancelText="Bekor qilish"
+      >
+        <p className="text-[13px] text-[#8F99A3] mb-2">
+          Muammoingiz yoki savolingizni yozing, texnik jamoamiz tez orada bog'lanadi.
+        </p>
+        <Input.TextArea
+          value={supportMessage}
+          onChange={(e) => setSupportMessage(e.target.value)}
+          placeholder="Xabaringizni yozing..."
+          rows={4}
+        />
+      </Modal>
     </div>
   );
 }

@@ -45,7 +45,10 @@ from apps.api.v1.views import (
     FinanceCategoryListCreateView,
     FinanceCategoryDetailView,
     ExpenseCreateView,
-    ExpenseDetailView
+    ExpenseDetailView,
+
+    #support
+    SupportMessageCreateView
 )
 from django.urls import path
 
@@ -97,5 +100,8 @@ urlpatterns = [
     path('finance/categories', FinanceCategoryListCreateView.as_view(), name='finance_category_list_create'),
     path('finance/categories/<uuid:id>', FinanceCategoryDetailView.as_view(), name='finance_category_detail'),
     path('finance/expenses', ExpenseCreateView.as_view(), name='finance_expense_create'),
-    path('finance/expenses/<uuid:id>', ExpenseDetailView.as_view(), name='finance_expense_detail')
+    path('finance/expenses/<uuid:id>', ExpenseDetailView.as_view(), name='finance_expense_detail'),
+
+    # support
+    path('support/messages', SupportMessageCreateView.as_view(), name='support_message_create')
 ]

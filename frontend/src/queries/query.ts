@@ -1235,4 +1235,19 @@ export const OneMedAdmin = {
     );
     return response.data;
   },
+
+  sendSupportMessage: async (
+    message: string
+  ): Promise<{ success: boolean; message?: string }> => {
+    const response = await api.post(
+      `${baseApi}/v1/support/messages`,
+      { message },
+      {
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    );
+    return response.data;
+  },
 };

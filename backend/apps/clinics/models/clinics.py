@@ -28,6 +28,13 @@ class Clinic(AbstractBaseModel):
         choices=StatusTextChoices.choices
     )
 
+    telegram_chat_id = models.CharField(
+        max_length=64,
+        blank=True,
+        null=True,
+        help_text="Support xabarlari shu Telegram chatiga yuboriladi"
+    )
+
     class Meta:
 
         db_table = 'clinics'

@@ -8,5 +8,10 @@ class ClinicAdmin(admin.ModelAdmin):
     list_display = (
         'id',
         'name',
-        'status'
+        'status',
+        'telegram_chat_id'
+    )
+
+    list_editable = (
+        'telegram_chat_id',
     )
