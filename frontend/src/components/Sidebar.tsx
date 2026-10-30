@@ -4,11 +4,13 @@ import { IoHomeOutline, IoSettingsOutline } from "react-icons/io5";
 import { LuUsers, LuUserPlus } from "react-icons/lu";
 import { TbReportMedical, TbCategoryPlus } from "react-icons/tb";
 import { MdOutlineDateRange } from "react-icons/md";
-import { FiLogOut, FiPlus, FiHeadphones } from "react-icons/fi";
+import { FiLogOut, FiHeadphones } from "react-icons/fi";
 import { MenuFoldOutlined, MenuUnfoldOutlined } from "@ant-design/icons";
 import { useCreateContext } from "../context/ContextApi";
 import { OneMedAdmin } from "../queries/query";
 import SecureStorage from "react-secure-storage";
+import logo from "../../public/images/logo.svg";
+import logoText from "../../public/images/logo-text.svg";
 
 type NavItem = {
   key: string;
@@ -105,14 +107,9 @@ export default function Sidebar() {
         } px-2 pb-5 mb-2 border-b border-[#F0F2F3]`}
       >
         <div className="flex items-center gap-3">
-          <div className="w-[38px] h-[38px] shrink-0 rounded-[10px] bg-[#0D9488] text-white flex items-center justify-center text-[18px]">
-            <FiPlus />
-          </div>
+          <img loading="lazy" src={logo} alt="" className="w-[35px] shrink-0" />
           {!collapsed && (
-            <div>
-              <h1 className="text-[16px] font-[700] leading-tight">AVITSENA</h1>
-              <p className="text-[11px] text-[#8F99A3]">Tibbiy boshqaruv tizimi</p>
-            </div>
+            <img loading="lazy" src={logoText} alt="One Med" className="h-[24px]" />
           )}
         </div>
 
