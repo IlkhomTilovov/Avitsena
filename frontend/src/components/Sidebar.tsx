@@ -175,8 +175,8 @@ export default function Sidebar() {
       )}
       <div className="flex-1">{systemItems.map(renderItem)}</div>
 
-      {/* Help card */}
-      {!collapsed && (
+      {/* Help card (hozircha yashirilgan) */}
+      {false && !collapsed && (
         <div className="bg-[#0F2A2A] rounded-[12px] p-4 mb-3 text-white">
           <div className="w-[32px] h-[32px] rounded-full bg-white/10 flex items-center justify-center text-[#2DD4BF] mb-2">
             <FiHeadphones />
