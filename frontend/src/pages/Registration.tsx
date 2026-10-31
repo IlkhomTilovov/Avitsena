@@ -442,7 +442,9 @@ export default function Registration() {
   const handleSendPatientValues = (value: sendResponseValuesType) => {
     const object: PatientRequest = {
       ...value,
-      phone: value.phone ? `+998${value.phone.replace(/^\+?998/, "")}` : "",
+      phone: value.phone
+        ? `+998${value.phone.replace(/\D/g, "").replace(/^998/, "").slice(0, 9)}`
+        : "",
       date_of_birth: value.date_of_birth?.format("YYYY-MM-DD"),
       pasport: value.pasport
         ? {
@@ -972,6 +974,7 @@ export default function Registration() {
               name="phone"
               label="Telefon raqam"
               className="md:col-span-2 col-span-6"
+              getValueFromEvent={(e) => e.target.value.replace(/\D/g, "").slice(0, 9)}
               extra={
                 <span className="text-[11px] text-[#8F99A3]">
                   SMS eslatmalar uchun
@@ -981,6 +984,7 @@ export default function Registration() {
               <Input
                 addonBefore="🇺🇿 +998"
                 placeholder="90 123 45 67"
+                maxLength={9}
                 className="w-full !h-[40px]"
               />
             </Form.Item>
