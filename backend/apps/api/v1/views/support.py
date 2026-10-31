@@ -1,4 +1,5 @@
 from rest_framework import status
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 from drf_spectacular.utils import extend_schema, OpenApiParameter
 from drf_spectacular.types import OpenApiTypes
@@ -7,8 +8,8 @@ from apps.api.v1.serializers import (
     SupportMessageCreateSerializer,
     SupportMessageListSerializer
 )
+from apps.shared.choices import UserRole
 from apps.shared.pagination import CustomPagination
-from apps.shared.permissions import IsSuperAdmin
 from apps.shared.response import CustomResponse
 from apps.support.models import SupportMessage
 from apps.support.services import send_telegram_message
@@ -23,7 +24,7 @@ class SupportMessageCreateView(APIView):
 
         if self.request.method == 'GET':
 
-            return [IsSuperAdmin()]
+            return [IsAuthenticated()]
 
         return super().get_permissions()
 
@@ -87,11 +88,19 @@ class SupportMessageCreateView(APIView):
             .select_related('clinic', 'user') \
             .order_by('-created_at')
 
-        clinic_id = request.query_params.get('clinic')
+        user = request.user
 
-        if clinic_id:
+        if user.role == UserRole.SUPERADMIN:
 
-            queryset = queryset.filter(clinic_id=clinic_id)
+            clinic_id = request.query_params.get('clinic')
+
+            if clinic_id:
+
+                queryset = queryset.filter(clinic_id=clinic_id)
+
+        else:
+
+            queryset = queryset.filter(user=user)
 
         paginator = self.pagination_class()
 

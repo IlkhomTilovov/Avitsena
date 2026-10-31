@@ -1,15 +1,17 @@
 import { useLocation, useNavigate } from "react-router-dom";
-import { useMutation, useQuery } from "react-query";
-import { useState } from "react";
-import { Modal, Input, notification } from "antd";
+import { useMutation, useQuery, useQueryClient } from "react-query";
+import { useEffect, useRef, useState } from "react";
+import { Modal, Input, notification, Spin } from "antd";
+import { LoadingOutlined } from "@ant-design/icons";
 import { IoHomeOutline, IoSettingsOutline } from "react-icons/io5";
 import { LuUsers, LuUserPlus, LuWallet } from "react-icons/lu";
 import { TbReportMedical, TbCategoryPlus } from "react-icons/tb";
 import { MdOutlineDateRange } from "react-icons/md";
-import { FiLogOut, FiHeadphones } from "react-icons/fi";
+import { FiLogOut, FiHeadphones, FiCheckCircle, FiClock } from "react-icons/fi";
 import { MenuFoldOutlined, MenuUnfoldOutlined } from "@ant-design/icons";
+import dayjs from "dayjs";
 import { useCreateContext } from "../context/ContextApi";
-import { OneMedAdmin } from "../queries/query";
+import { OneMedAdmin, SupportMessageItem } from "../queries/query";
 import SecureStorage from "react-secure-storage";
 import logo from "../../public/images/logo.svg";
 import logoText from "../../public/images/logo-text.svg";
@@ -27,9 +29,11 @@ export default function Sidebar() {
   const navigate = useNavigate();
   const location = useLocation();
   const [notifApi, contextHolder] = notification.useNotification();
+  const queryClient = useQueryClient();
 
   const [isSupportModalOpen, setIsSupportModalOpen] = useState(false);
   const [supportMessage, setSupportMessage] = useState("");
+  const historyEndRef = useRef<HTMLDivElement>(null);
 
   const { data: allStatData } = useQuery({
     queryFn: () => OneMedAdmin.allStat(),
@@ -38,12 +42,28 @@ export default function Sidebar() {
     cacheTime: Infinity,
   });
 
+  const { data: supportHistoryData, isLoading: isSupportHistoryLoading } = useQuery({
+    queryFn: () => OneMedAdmin.getSupportMessages(1, 50),
+    queryKey: ["mySupportMessages"],
+    enabled: isSupportModalOpen,
+  });
+
+  const supportHistory: SupportMessageItem[] = [
+    ...(supportHistoryData?.data || []),
+  ].reverse();
+
+  useEffect(() => {
+    if (isSupportModalOpen) {
+      historyEndRef.current?.scrollIntoView({ block: "end" });
+    }
+  }, [isSupportModalOpen, supportHistory.length]);
+
   const sendSupportMutation = useMutation({
     mutationFn: OneMedAdmin.sendSupportMessage,
     onSuccess: () => {
       notifApi.success({ message: "Murojaatingiz yuborildi" });
-      setIsSupportModalOpen(false);
       setSupportMessage("");
+      queryClient.invalidateQueries(["mySupportMessages"]);
     },
     onError: () => {
       notifApi.error({
@@ -205,6 +225,44 @@ export default function Sidebar() {
         <p className="text-[13px] text-[#8F99A3] mb-2">
           Muammoingiz yoki savolingizni yozing, texnik jamoamiz tez orada bog'lanadi.
         </p>
+
+        {isSupportHistoryLoading ? (
+          <div className="w-full py-6 flex justify-center">
+            <Spin indicator={<LoadingOutlined spin />} />
+          </div>
+        ) : supportHistory.length > 0 ? (
+          <div className="max-h-[260px] overflow-y-auto flex flex-col gap-2 mb-3 pr-1">
+            {supportHistory.map((item) => (
+              <div
+                key={item.id}
+                className="bg-[#F1F5F4] rounded-[10px] px-3 py-2 max-w-[90%] self-start"
+              >
+                <p className="text-[13px] text-[#263238] whitespace-pre-wrap">
+                  {item.message}
+                </p>
+                <div className="flex items-center gap-2 mt-1">
+                  <span className="text-[11px] text-[#8F99A3]">
+                    {dayjs(item.created_at).format("DD.MM.YYYY HH:mm")}
+                  </span>
+                  <span
+                    className={`flex items-center gap-1 text-[10px] font-[600] ${
+                      item.delivered ? "text-[#0D9488]" : "text-[#D48806]"
+                    }`}
+                  >
+                    {item.delivered ? <FiCheckCircle /> : <FiClock />}
+                    {item.delivered ? "Yuborildi" : "Kutilmoqda"}
+                  </span>
+                </div>
+              </div>
+            ))}
+            <div ref={historyEndRef} />
+          </div>
+        ) : (
+          <div className="mb-3 px-3 py-4 border border-dashed border-[#E0E6EB] rounded-[10px] text-center text-[12px] text-[#8F99A3]">
+            Hozircha murojaatlar tarixi yo'q
+          </div>
+        )}
+
         <Input.TextArea
           value={supportMessage}
           onChange={(e) => setSupportMessage(e.target.value)}
