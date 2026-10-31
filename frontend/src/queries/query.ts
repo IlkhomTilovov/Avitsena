@@ -209,6 +209,8 @@ type Visit = {
   created_at: string;
   diagnosis: string | null;
   status: "pending" | "completed" | "cancelled" | string; // agar status doim faqat shu 3 bo'lsa union yozamiz, boshqa bo'lishi mumkin bo'lsa string qoldiramiz
+  payment_method?: "cash" | "card" | "click_payme" | "transfer" | null;
+  payment_method_display?: string | null;
 };
 
 type Meta = {

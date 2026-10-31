@@ -2031,6 +2031,17 @@ export default function PatientsInfo() {
                                   To'lov:
                                 </span>
                                 {item.total_price} so'm
+                                <span
+                                  className={`px-2 py-0.5 rounded-[4px] text-white text-[11px] ${
+                                    item.payment_method_display
+                                      ? "bg-[#0D9488]"
+                                      : "bg-[#D48806]"
+                                  }`}
+                                >
+                                  {item.payment_method_display
+                                    ? `Qabul qilindi (${item.payment_method_display})`
+                                    : "Qabul qilinmagan"}
+                                </span>
                               </li>
                             </ul>
                           </div>

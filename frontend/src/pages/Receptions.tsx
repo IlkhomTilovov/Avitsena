@@ -122,11 +122,24 @@ export default function Receptions() {
                   {Number(visit.total_price || 0).toLocaleString()} so'm
                 </div>
 
-                <span
-                  className={`px-2.5 py-1.5 rounded-[8px] text-[13px] font-[600] ${badge.className}`}
-                >
-                  {badge.label}
-                </span>
+                <div className="flex flex-col items-end gap-1.5">
+                  <span
+                    className={`px-2.5 py-1.5 rounded-[8px] text-[13px] font-[600] ${badge.className}`}
+                  >
+                    {badge.label}
+                  </span>
+                  <span
+                    className={`px-2.5 py-1 rounded-[8px] text-[11px] font-[600] ${
+                      visit.payment_method_display
+                        ? "bg-[#E9FBF4] text-[#0D9488]"
+                        : "bg-[#FFF7E6] text-[#D48806]"
+                    }`}
+                  >
+                    {visit.payment_method_display
+                      ? `To'lov qabul qilindi (${visit.payment_method_display})`
+                      : "To'lov qabul qilinmagan"}
+                  </span>
+                </div>
               </Link>
             );
           })}

@@ -501,6 +501,8 @@ class PatientVisitListSerializer(serializers.ModelSerializer):
 
     file = serializers.SerializerMethodField()
 
+    payment_method_display = serializers.SerializerMethodField()
+
     services = ServiceSerializer(many=True)
 
     class Meta:
@@ -516,9 +518,11 @@ class PatientVisitListSerializer(serializers.ModelSerializer):
             'status',
             'file',
             'services',
+            'payment_method',
+            'payment_method_display',
             'created_at'
         )
-    
+
     def get_file(self, instance) -> str | None:
 
         request = self.context['request']
@@ -526,12 +530,16 @@ class PatientVisitListSerializer(serializers.ModelSerializer):
         if instance.file and hasattr(instance.file, 'url'):
 
             return request.build_absolute_uri(instance.file.url)
-        
+
         return None
-    
+
     def get_doctor(self, instance) -> str | None:
 
         return getattr(instance.doctor, 'fio', None)
+
+    def get_payment_method_display(self, instance) -> str | None:
+
+        return instance.get_payment_method_display() if instance.payment_method else None
     
     def get_room_number(self, instance) -> str | None:
 
@@ -621,6 +629,8 @@ class PatientVisitDetailSerializer(serializers.ModelSerializer):
 
     file = serializers.SerializerMethodField()
 
+    payment_method_display = serializers.SerializerMethodField()
+
     class Meta:
 
         model = PatientVisit
@@ -635,6 +645,8 @@ class PatientVisitDetailSerializer(serializers.ModelSerializer):
             'file',
             'total_price',
             'status',
+            'payment_method',
+            'payment_method_display',
             'created_at',
             'updated_at'
         )
@@ -652,6 +664,10 @@ class PatientVisitDetailSerializer(serializers.ModelSerializer):
     def get_doctor(self, instance) -> str | None:
 
         return getattr(instance.doctor, 'fio', None)
+
+    def get_payment_method_display(self, instance) -> str | None:
+
+        return instance.get_payment_method_display() if instance.payment_method else None
 
     def get_room_number(self, instance) -> str | None:
 
@@ -721,6 +737,8 @@ class TodayVisitListSerializer(serializers.ModelSerializer):
 
     services = ServiceSerializer(many=True)
 
+    payment_method_display = serializers.SerializerMethodField()
+
     class Meta:
 
         model = PatientVisit
@@ -732,5 +750,11 @@ class TodayVisitListSerializer(serializers.ModelSerializer):
             'queue',
             'status',
             'total_price',
+            'payment_method',
+            'payment_method_display',
             'created_at'
         )
+
+    def get_payment_method_display(self, instance) -> str | None:
+
+        return instance.get_payment_method_display() if instance.payment_method else None
