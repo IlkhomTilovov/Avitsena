@@ -155,6 +155,8 @@ type Visit = {
   diagnosis: string | null;
   created_at: string;
   status: "pending" | "completed" | "cancelled" | string;
+  payment_method?: "cash" | "card" | "click_payme" | "transfer" | null;
+  payment_method_display?: string | null;
 };
 
 // Pagination meta ma'lumotlari
