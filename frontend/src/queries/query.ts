@@ -557,11 +557,12 @@ export const OneMedAdmin = {
       },
     });
 
-    const { access_token, refresh_token, fio, phone, username } =
+    const { access_token, refresh_token, fio, phone, username, role } =
       response.data.data;
     console.log("accessToken", response.data.data.access_token);
     SecureStorage.setItem("accessToken", access_token);
     SecureStorage.setItem("refreshToken", refresh_token);
+    SecureStorage.setItem("role", role);
     localStorage.setItem("fio", fio);
     SecureStorage.setItem(
       "userSettingData",

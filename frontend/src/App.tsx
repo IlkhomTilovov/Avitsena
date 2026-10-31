@@ -31,7 +31,7 @@ function App() {
           <Route
             path="/dashboard"
             element={
-              <PriviteRote>
+              <PriviteRote roles={["admin"]}>
                 <Dashboard />
               </PriviteRote>
             }
@@ -39,7 +39,7 @@ function App() {
           <Route
             path="/patients"
             element={
-              <PriviteRote>
+              <PriviteRote roles={["admin"]}>
                 <Patients />
               </PriviteRote>
             }
@@ -47,7 +47,7 @@ function App() {
           <Route
             path="/employees"
             element={
-              <PriviteRote>
+              <PriviteRote roles={["admin"]}>
                 <Employees />
               </PriviteRote>
             }
@@ -55,7 +55,7 @@ function App() {
           <Route
             path="/receptions"
             element={
-              <PriviteRote>
+              <PriviteRote roles={["admin"]}>
                 <Receptions />
               </PriviteRote>
             }
@@ -63,7 +63,7 @@ function App() {
           <Route
             path="/registration"
             element={
-              <PriviteRote>
+              <PriviteRote roles={["admin"]}>
                 <Registration />
               </PriviteRote>
             }
@@ -71,7 +71,7 @@ function App() {
           <Route
             path="patients/:id"
             element={
-              <PriviteRote>
+              <PriviteRote roles={["admin"]}>
                 <PatientsInfo />
               </PriviteRote>
             }
@@ -80,7 +80,7 @@ function App() {
           <Route
             path="employees/:id"
             element={
-              <PriviteRote>
+              <PriviteRote roles={["admin"]}>
                 <EmployeeInfo />
               </PriviteRote>
             }
@@ -88,7 +88,7 @@ function App() {
           <Route
             path="settings"
             element={
-              <PriviteRote>
+              <PriviteRote roles={["admin"]}>
                 <Settings />
               </PriviteRote>
             }
@@ -96,7 +96,7 @@ function App() {
           <Route
             path="services"
             element={
-              <PriviteRote>
+              <PriviteRote roles={["admin"]}>
                 <Services />
               </PriviteRote>
             }
@@ -104,7 +104,7 @@ function App() {
           <Route
             path="/moliya"
             element={
-              <PriviteRote>
+              <PriviteRote roles={["admin"]}>
                 <Moliya />
               </PriviteRote>
             }
@@ -114,7 +114,7 @@ function App() {
         <Route
           path="register"
           element={
-            <PriviteRote>
+            <PriviteRote roles={["registrator"]}>
               <RegisterLayout />
             </PriviteRote>
           }
@@ -122,7 +122,7 @@ function App() {
           <Route
             path="registration"
             element={
-              <PriviteRote>
+              <PriviteRote roles={["registrator"]}>
                 <Registration />
               </PriviteRote>
             }
@@ -130,7 +130,7 @@ function App() {
           <Route
             path="patients"
             element={
-              <PriviteRote>
+              <PriviteRote roles={["registrator"]}>
                 <Patients />
               </PriviteRote>
             }
@@ -138,7 +138,7 @@ function App() {
           <Route
             path="patients/:id"
             element={
-              <PriviteRote>
+              <PriviteRote roles={["registrator"]}>
                 <PatientsInfo />
               </PriviteRote>
             }
@@ -146,7 +146,7 @@ function App() {
           <Route
             path="settings"
             element={
-              <PriviteRote>
+              <PriviteRote roles={["registrator"]}>
                 <Settings />
               </PriviteRote>
             }
@@ -154,7 +154,7 @@ function App() {
           <Route
             path="moliya"
             element={
-              <PriviteRote>
+              <PriviteRote roles={["registrator"]}>
                 <Moliya />
               </PriviteRote>
             }
@@ -163,7 +163,7 @@ function App() {
         <Route
           path="doctor"
           element={
-            <PriviteRote>
+            <PriviteRote roles={["doctor"]}>
               <DoctorLayout />
             </PriviteRote>
           }
@@ -171,7 +171,7 @@ function App() {
           <Route
             path="patients"
             element={
-              <PriviteRote>
+              <PriviteRote roles={["doctor"]}>
                 <Patients />
               </PriviteRote>
             }
@@ -179,7 +179,7 @@ function App() {
           <Route
             path="settings"
             element={
-              <PriviteRote>
+              <PriviteRote roles={["doctor"]}>
                 <SettingDoctor />
               </PriviteRote>
             }
@@ -187,7 +187,7 @@ function App() {
           <Route
             path="patients/:id"
             element={
-              <PriviteRote>
+              <PriviteRote roles={["doctor"]}>
                 <PatientsInfo />
               </PriviteRote>
             }
@@ -196,7 +196,7 @@ function App() {
         <Route
           path="superadmin"
           element={
-            <PriviteRote>
+            <PriviteRote roles={["superadmin"]}>
               <SuperAdminLayout />
             </PriviteRote>
           }
@@ -204,7 +204,7 @@ function App() {
           <Route
             path="clinics"
             element={
-              <PriviteRote>
+              <PriviteRote roles={["superadmin"]}>
                 <Clinics />
               </PriviteRote>
             }
@@ -212,7 +212,7 @@ function App() {
           <Route
             path="murojaatlar"
             element={
-              <PriviteRote>
+              <PriviteRote roles={["superadmin"]}>
                 <SupportMessages />
               </PriviteRote>
             }

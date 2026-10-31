@@ -198,6 +198,7 @@ export default function Sidebar() {
           SecureStorage.removeItem("accessToken");
           SecureStorage.removeItem("refreshToken");
           SecureStorage.removeItem("userSettingData");
+          SecureStorage.removeItem("role");
           localStorage.removeItem("fio");
           navigate("/", { replace: true });
         }}
