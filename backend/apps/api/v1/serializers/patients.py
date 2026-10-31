@@ -430,7 +430,8 @@ class PatientVisitCreateSerializer(serializers.ModelSerializer):
             'id',
             'doctor',
             'services',
-            'file'
+            'file',
+            'payment_method'
         )
     
     def validate(self, attrs):
@@ -480,6 +481,10 @@ class PatientVisitCreateSerializer(serializers.ModelSerializer):
             'total_price': total_price,
             'queue': queue
         })
+
+        if validated_data.get('payment_method'):
+
+            validated_data['cashier'] = registrator
 
         visit = PatientVisit.objects.create(**validated_data)
 

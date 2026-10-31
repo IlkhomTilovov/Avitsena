@@ -74,6 +74,38 @@ function GenderToggle({
   );
 }
 
+const PAYMENT_METHODS = [
+  { value: "cash", label: "Naqt" },
+  { value: "card", label: "Karta" },
+];
+
+function PaymentMethodToggle({
+  value,
+  onChange,
+}: {
+  value?: string;
+  onChange?: (val: string) => void;
+}) {
+  return (
+    <div className="flex items-center gap-2">
+      {PAYMENT_METHODS.map((opt) => (
+        <button
+          key={opt.value}
+          type="button"
+          onClick={() => onChange?.(opt.value)}
+          className={`flex-1 h-[40px] rounded-[8px] border text-[14px] font-[500] cursor-pointer transition-colors ${
+            value === opt.value
+              ? "border-[#0D9488] bg-[#E9FBF4] text-[#0D9488]"
+              : "border-[#E0E6EB] text-[#44525C] hover:bg-[#F9FAFB]"
+          }`}
+        >
+          {opt.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 function BloodGroupGrid({
   value,
   onChange,
@@ -310,6 +342,7 @@ export default function Registration() {
   // Shifokor tanlaganda ID ni ushlab turadigan state
   const [handleSelectDoctorState, setHandleSelectDoctorState] = useState("");
   const [selectedServices, setSelectedServices] = useState<string[]>([]);
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>("");
 
   const obj = {
     doctor: handleSelectDoctorState,
@@ -326,6 +359,9 @@ export default function Registration() {
       OneMedAdmin.addNewVisit(id, {
         doctor: handleSelectDoctorState,
         services: selectedServices,
+        payment_method: selectedPaymentMethod
+          ? (selectedPaymentMethod as "cash" | "card")
+          : undefined,
       }),
     {
       onSuccess: () => {
@@ -334,6 +370,7 @@ export default function Registration() {
         form.resetFields();
         setSelectedPatientId(null);
         setSelectedServices([]);
+        setSelectedPaymentMethod("");
         setIsFormDisabled(false);
         openNotificationWithIcon("success", "Bemorga doctor biriktirildi");
       },
@@ -1349,6 +1386,14 @@ export default function Registration() {
                 />
               </div>
             )}
+
+            <div className="flex flex-col gap-1 md:col-span-2 col-span-6">
+              <label className="text-sm">To'lov usuli</label>
+              <PaymentMethodToggle
+                value={selectedPaymentMethod}
+                onChange={setSelectedPaymentMethod}
+              />
+            </div>
           </div>
           <div className="px-[24px] pb-4 flex gap-4 justify-end mt-3 md:mt-auto">
             <button

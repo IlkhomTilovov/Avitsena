@@ -192,6 +192,7 @@ type PatientSearchResponse = {
 type visitDoctorType = {
   doctor: string;
   services?: string[];
+  payment_method?: "cash" | "card";
 };
 
 type Service = {
