@@ -48,7 +48,9 @@ from apps.api.v1.views import (
     ExpenseDetailView,
 
     #support
-    SupportMessageCreateView
+    SupportMessageCreateView,
+    SupportMessageReplyView,
+    SupportTelegramWebhookView
 )
 from django.urls import path
 
@@ -103,5 +105,7 @@ urlpatterns = [
     path('finance/expenses/<uuid:id>', ExpenseDetailView.as_view(), name='finance_expense_detail'),
 
     # support
-    path('support/messages', SupportMessageCreateView.as_view(), name='support_message_create')
+    path('support/messages', SupportMessageCreateView.as_view(), name='support_message_create'),
+    path('support/messages/<uuid:id>/reply', SupportMessageReplyView.as_view(), name='support_message_reply'),
+    path('support/telegram-webhook', SupportTelegramWebhookView.as_view(), name='support_telegram_webhook')
 ]

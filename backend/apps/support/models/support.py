@@ -24,6 +24,41 @@ class SupportMessage(AbstractBaseModel):
         default=False
     )
 
+    telegram_message_id = models.PositiveIntegerField(
+        null=True,
+        blank=True
+    )
+
+    reply = models.TextField(
+        null=True,
+        blank=True
+    )
+
+    replied_by = models.CharField(
+        max_length=255,
+        null=True,
+        blank=True
+    )
+
+    replied_at = models.DateTimeField(
+        null=True,
+        blank=True
+    )
+
+    REPLY_SOURCE_APP = 'app'
+    REPLY_SOURCE_TELEGRAM = 'telegram'
+    REPLY_SOURCE_CHOICES = (
+        (REPLY_SOURCE_APP, 'App'),
+        (REPLY_SOURCE_TELEGRAM, 'Telegram'),
+    )
+
+    reply_source = models.CharField(
+        max_length=16,
+        choices=REPLY_SOURCE_CHOICES,
+        null=True,
+        blank=True
+    )
+
     class Meta:
 
         db_table = 'support_messages'

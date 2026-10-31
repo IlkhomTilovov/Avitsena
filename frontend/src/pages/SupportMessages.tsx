@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { useQuery } from "react-query";
-import { Pagination, Select, Spin } from "antd";
+import { useMutation, useQuery, useQueryClient } from "react-query";
+import { Button, Input, Pagination, Select, Spin, notification } from "antd";
 import { LoadingOutlined } from "@ant-design/icons";
 import { HiOutlineChatBubbleLeftRight } from "react-icons/hi2";
 import { FiCheckCircle, FiClock } from "react-icons/fi";
@@ -12,6 +12,9 @@ export default function SupportMessages() {
   const [page, setPage] = useState(1);
   const [clinicId, setClinicId] = useState<string | undefined>();
   const per_page = 15;
+  const queryClient = useQueryClient();
+  const [notifApi, contextHolder] = notification.useNotification();
+  const [drafts, setDrafts] = useState<Record<string, string>>({});
 
   const { data: clinicsData } = useQuery({
     queryKey: ["clinics", "support-filter"],
@@ -28,8 +31,25 @@ export default function SupportMessages() {
   const messages: SupportMessageItem[] = data?.data || [];
   const meta = data?.meta;
 
+  const replyMutation = useMutation({
+    mutationFn: ({ id, reply }: { id: string; reply: string }) =>
+      OneMedAdmin.replySupportMessage(id, reply),
+    onSuccess: (_res, variables) => {
+      notifApi.success({ message: "Javob yuborildi" });
+      setDrafts((prev) => ({ ...prev, [variables.id]: "" }));
+      queryClient.invalidateQueries(["supportMessages"]);
+    },
+    onError: () => {
+      notifApi.error({
+        message: "Xatolik",
+        description: "Javobni yuborib bo'lmadi, qayta urinib ko'ring",
+      });
+    },
+  });
+
   return (
     <div className="pr-[10px] md:pr-auto">
+      {contextHolder}
       {/* Header */}
       <div className="flex md:flex-row flex-col md:items-center items-start justify-between gap-3 mt-[30px] mb-4">
         <div>
@@ -104,6 +124,49 @@ export default function SupportMessages() {
               <p className="text-[13px] text-[#44525C] mt-3 whitespace-pre-wrap">
                 {item.message}
               </p>
+
+              {item.reply ? (
+                <div className="mt-3 pl-3 border-l-2 border-[#0D9488]">
+                  <p className="text-[12px] font-[600] text-[#0D9488]">
+                    Javob {item.replied_by ? `· ${item.replied_by}` : ""}
+                    {item.reply_source === "telegram" ? " (Telegram)" : ""}
+                  </p>
+                  <p className="text-[13px] text-[#44525C] mt-1 whitespace-pre-wrap">
+                    {item.reply}
+                  </p>
+                  {item.replied_at && (
+                    <p className="text-[11px] text-[#8F99A3] mt-1">
+                      {dayjs(item.replied_at).format("DD.MM.YYYY HH:mm")}
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <div className="mt-3 flex items-start gap-2">
+                  <Input.TextArea
+                    value={drafts[item.id] || ""}
+                    onChange={(e) =>
+                      setDrafts((prev) => ({ ...prev, [item.id]: e.target.value }))
+                    }
+                    placeholder="Javob yozish... (yoki Telegramda to'g'ridan-to'g'ri javob bering)"
+                    rows={2}
+                    className="!text-[13px]"
+                  />
+                  <Button
+                    type="primary"
+                    className="!bg-[#0D9488] hover:!bg-[#0C8377] shrink-0"
+                    loading={
+                      replyMutation.isLoading &&
+                      replyMutation.variables?.id === item.id
+                    }
+                    disabled={!drafts[item.id]?.trim()}
+                    onClick={() =>
+                      replyMutation.mutate({ id: item.id, reply: drafts[item.id] })
+                    }
+                  >
+                    Yuborish
+                  </Button>
+                </div>
+              )}
             </div>
           ))}
 

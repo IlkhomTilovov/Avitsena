@@ -233,26 +233,37 @@ export default function Sidebar() {
         ) : supportHistory.length > 0 ? (
           <div className="max-h-[260px] overflow-y-auto flex flex-col gap-2 mb-3 pr-1">
             {supportHistory.map((item) => (
-              <div
-                key={item.id}
-                className="bg-[#F1F5F4] rounded-[10px] px-3 py-2 max-w-[90%] self-start"
-              >
-                <p className="text-[13px] text-[#263238] whitespace-pre-wrap">
-                  {item.message}
-                </p>
-                <div className="flex items-center gap-2 mt-1">
-                  <span className="text-[11px] text-[#8F99A3]">
-                    {dayjs(item.created_at).format("DD.MM.YYYY HH:mm")}
-                  </span>
-                  <span
-                    className={`flex items-center gap-1 text-[10px] font-[600] ${
-                      item.delivered ? "text-[#0D9488]" : "text-[#D48806]"
-                    }`}
-                  >
-                    {item.delivered ? <FiCheckCircle /> : <FiClock />}
-                    {item.delivered ? "Yuborildi" : "Kutilmoqda"}
-                  </span>
+              <div key={item.id} className="flex flex-col gap-1.5">
+                <div className="bg-[#F1F5F4] rounded-[10px] px-3 py-2 max-w-[90%] self-start">
+                  <p className="text-[13px] text-[#263238] whitespace-pre-wrap">
+                    {item.message}
+                  </p>
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className="text-[11px] text-[#8F99A3]">
+                      {dayjs(item.created_at).format("DD.MM.YYYY HH:mm")}
+                    </span>
+                    <span
+                      className={`flex items-center gap-1 text-[10px] font-[600] ${
+                        item.delivered ? "text-[#0D9488]" : "text-[#D48806]"
+                      }`}
+                    >
+                      {item.delivered ? <FiCheckCircle /> : <FiClock />}
+                      {item.delivered ? "Yuborildi" : "Kutilmoqda"}
+                    </span>
+                  </div>
                 </div>
+
+                {item.reply && (
+                  <div className="bg-[#0D9488] rounded-[10px] px-3 py-2 max-w-[90%] self-end">
+                    <p className="text-[13px] text-white whitespace-pre-wrap">
+                      {item.reply}
+                    </p>
+                    <span className="text-[11px] text-white/70">
+                      {item.replied_at &&
+                        dayjs(item.replied_at).format("DD.MM.YYYY HH:mm")}
+                    </span>
+                  </div>
+                )}
               </div>
             ))}
             <div ref={historyEndRef} />

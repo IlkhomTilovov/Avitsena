@@ -72,5 +72,24 @@ class SupportMessageListSerializer(serializers.ModelSerializer):
             'user_role',
             'message',
             'delivered',
+            'reply',
+            'replied_by',
+            'replied_at',
+            'reply_source',
             'created_at'
         )
+
+
+class SupportMessageReplySerializer(serializers.Serializer):
+
+    reply = serializers.CharField()
+
+    def validate_reply(self, value):
+
+        value = value.strip()
+
+        if not value:
+
+            raise serializers.ValidationError("Javob matni kiritilishi kerak.")
+
+        return value

@@ -538,6 +538,10 @@ export interface SupportMessageItem {
   user_role: string | null;
   message: string;
   delivered: boolean;
+  reply: string | null;
+  replied_by: string | null;
+  replied_at: string | null;
+  reply_source: "app" | "telegram" | null;
   created_at: string;
 }
 
@@ -1282,6 +1286,22 @@ export const OneMedAdmin = {
         "Content-Type": "application/json",
       },
     });
+    return response.data;
+  },
+
+  replySupportMessage: async (
+    id: string,
+    reply: string
+  ): Promise<{ success: boolean; message?: string; data?: SupportMessageItem }> => {
+    const response = await api.patch(
+      `${baseApi}/v1/support/messages/${id}/reply`,
+      { reply },
+      {
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    );
     return response.data;
   },
 };
