@@ -399,6 +399,7 @@ export default function Registration() {
             form.resetFields();
             setSelectedPatientId(null); // ✅ yangi ID saqlaymiz
             setIsFormDisabled(false); // yangi bemorda forma tahrirlanadi
+            setSelectedPaymentMethod("");
           }
           openNotificationWithIcon("success", "Yangi bemor qo‘shildi");
         },
@@ -658,6 +659,7 @@ export default function Registration() {
     watchedValues?.gender,
     watchedValues?.blood_group,
     watchedValues?.document_type,
+    selectedPaymentMethod,
   ];
   const importantFilledCount = importantFieldsList.filter(Boolean).length;
   const importantComplete = importantFilledCount === importantFieldsList.length;
@@ -951,7 +953,7 @@ export default function Registration() {
                   </span>
                 ) : (
                   <span className="inline-flex items-center gap-1 text-[11px] font-[600] text-[#B5820A] bg-[#FEF6E6] px-2 py-1 rounded-full mt-2.5">
-                    {importantFilledCount} / 5 to'ldirildi
+                    {importantFilledCount} / {importantFieldsList.length} to'ldirildi
                   </span>
                 )}
               </div>
@@ -1053,6 +1055,17 @@ export default function Registration() {
                   </Form.Item>
                 </div>
               )}
+            </div>
+
+            <div className="md:col-span-6 col-span-6">
+              <p className="text-[14px] mb-[8px]">To'lov usuli</p>
+              <PaymentMethodToggle
+                value={selectedPaymentMethod}
+                onChange={setSelectedPaymentMethod}
+              />
+              <p className="text-[11px] text-[#8F99A3] mt-1">
+                Qabulga shifokor biriktirilganda shu to'lov usuli bilan saqlanadi
+              </p>
             </div>
           </div>
           {/* pasport  */}
