@@ -42,6 +42,7 @@ class Patient(AbstractBaseModel):
 
     phone = models.CharField(
         max_length=13,
+        blank=True,
         null=True
     )
 
