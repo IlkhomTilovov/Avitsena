@@ -34,7 +34,6 @@ export interface UserProfile {
   status: string;
   more: string | null;
   clinic_name: string | null;
-  can_view_finance: boolean;
 }
 
 export interface UserProfileResponse {

@@ -387,6 +387,7 @@ export type DeleteResponse = {
 };
 
 export interface FinanceFilters {
+  clinic: string;
   date_from?: string;
   date_to?: string;
   type?: "kirim" | "chiqim";
@@ -401,12 +402,12 @@ export interface FinanceFilters {
   per_page?: number;
 }
 
-function cleanFinanceFilters(filters: FinanceFilters) {
+function cleanFinanceFilters(filters: FinanceFilters | FinanceCategoryFilters) {
   const params: Record<string, string | number> = {};
 
   Object.entries(filters).forEach(([key, value]) => {
     if (value !== undefined && value !== null && value !== "") {
-      params[key] = value;
+      params[key] = value as string | number;
     }
   });
 
@@ -474,6 +475,15 @@ export interface FinanceTransactionsResponse {
   };
 }
 
+export interface FinanceFilterOptions {
+  employees: { id: string; fio: string; role: string }[];
+  service_categories: {
+    id: string;
+    name: string;
+    services: { id: string; name: string }[];
+  }[];
+}
+
 export interface CreateExpensePayload {
   category: string;
   title: string;
@@ -497,6 +507,7 @@ export interface FinanceCategory {
 }
 
 export interface FinanceCategoryFilters {
+  clinic: string;
   type?: "kirim" | "chiqim";
   date_from?: string;
   date_to?: string;
@@ -618,6 +629,19 @@ export const AvitcenaAdmin = {
     };
   }) => {
     const response = await api.post(`${baseApi}/v1/clinics`, obj, {
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+
+    return response.data;
+  },
+
+  updateClinic: async (
+    id: string,
+    obj: { name: string; phone: string; address: string; status: string }
+  ) => {
+    const response = await api.patch(`${baseApi}/v1/clinics/${id}`, obj, {
       headers: {
         "Content-Type": "application/json",
       },
@@ -1179,10 +1203,21 @@ export const AvitcenaAdmin = {
     window.URL.revokeObjectURL(url);
   },
 
+  financeFilterOptions: async (
+    clinic: string
+  ): Promise<{ success: boolean; data: FinanceFilterOptions }> => {
+    const response = await api.get(`${baseApi}/v1/finance/filter-options`, {
+      params: { clinic },
+    });
+    return response.data;
+  },
+
   createExpense: async (
-    payload: CreateExpensePayload
+    payload: CreateExpensePayload,
+    clinic: string
   ): Promise<{ success: boolean; data: FinanceTransaction }> => {
     const response = await api.post(`${baseApi}/v1/finance/expenses`, payload, {
+      params: { clinic },
       headers: {
         "Content-Type": "application/json",
       },
@@ -1190,8 +1225,10 @@ export const AvitcenaAdmin = {
     return response.data;
   },
 
-  deleteExpense: async (id: string): Promise<DeleteResponse> => {
-    const response = await api.delete(`${baseApi}/v1/finance/expenses/${id}`);
+  deleteExpense: async (id: string, clinic: string): Promise<DeleteResponse> => {
+    const response = await api.delete(`${baseApi}/v1/finance/expenses/${id}`, {
+      params: { clinic },
+    });
     return response.data;
   },
 
@@ -1202,7 +1239,7 @@ export const AvitcenaAdmin = {
     data: { date_from: string; date_to: string; categories: FinanceCategory[] };
   }> => {
     const response = await api.get(`${baseApi}/v1/finance/categories`, {
-      params: cleanFinanceFilters(filters as FinanceFilters),
+      params: cleanFinanceFilters(filters),
       headers: {
         "Content-Type": "application/json",
       },
@@ -1211,12 +1248,14 @@ export const AvitcenaAdmin = {
   },
 
   createFinanceCategory: async (
-    payload: CreateFinanceCategoryPayload
+    payload: CreateFinanceCategoryPayload,
+    clinic: string
   ): Promise<{ success: boolean; data: FinanceCategory }> => {
     const response = await api.post(
       `${baseApi}/v1/finance/categories`,
       payload,
       {
+        params: { clinic },
         headers: {
           "Content-Type": "application/json",
         },
@@ -1227,12 +1266,14 @@ export const AvitcenaAdmin = {
 
   updateFinanceCategory: async (
     id: string,
-    payload: UpdateFinanceCategoryPayload
+    payload: UpdateFinanceCategoryPayload,
+    clinic: string
   ): Promise<{ success: boolean; data: FinanceCategory }> => {
     const response = await api.patch(
       `${baseApi}/v1/finance/categories/${id}`,
       payload,
       {
+        params: { clinic },
         headers: {
           "Content-Type": "application/json",
         },

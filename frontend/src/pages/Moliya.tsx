@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { ReactNode, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "react-query";
 import { Link } from "react-router-dom";
 import {
@@ -24,6 +24,7 @@ import {
 import { LuLayers } from "react-icons/lu";
 import {
   AvitcenaAdmin,
+  CreateExpensePayload,
   FinanceFilters,
   FinanceTransaction,
 } from "../queries/query";
@@ -88,6 +89,59 @@ function changeBadge(change?: { percentage: number | null; amount: number | null
 }
 
 export default function Moliya() {
+  const [selectedClinicId, setSelectedClinicId] = useState<string | undefined>();
+
+  const { data: clinicsData, isLoading } = useQuery({
+    queryKey: ["clinics", "finance-select"],
+    queryFn: () => AvitcenaAdmin.getClinics(1, 100),
+  });
+
+  const clinics: { id: string; name: string }[] = clinicsData?.data || [];
+  const clinicId = selectedClinicId ?? clinics[0]?.id;
+
+  if (isLoading) {
+    return (
+      <div className="w-full py-16 flex justify-center">
+        <Spin indicator={<LoadingOutlined spin />} size="large" />
+      </div>
+    );
+  }
+
+  if (!clinicId) {
+    return (
+      <div className="px-6 py-16 text-center text-[#8F99A3]">
+        Moliyani ko'rish uchun avval klinika qo'shing
+      </div>
+    );
+  }
+
+  // key: klinika almashganda filtrlar va eski ma'lumotlar tozalanadi
+  return (
+    <MoliyaContent
+      key={clinicId}
+      clinicId={clinicId}
+      clinicSelect={
+        <Select
+          value={clinicId}
+          onChange={setSelectedClinicId}
+          aria-label="Klinika"
+          showSearch
+          optionFilterProp="label"
+          className="!min-w-[200px] !h-[40px]"
+          options={clinics.map((c) => ({ value: c.id, label: c.name }))}
+        />
+      }
+    />
+  );
+}
+
+function MoliyaContent({
+  clinicId,
+  clinicSelect,
+}: {
+  clinicId: string;
+  clinicSelect: ReactNode;
+}) {
   const queryClient = useQueryClient();
   const [notifApi, contextHolder] = notification.useNotification();
 
@@ -114,6 +168,7 @@ export default function Moliya() {
 
   const filters: FinanceFilters = useMemo(
     () => ({
+      clinic: clinicId,
       date_from: range[0].format("YYYY-MM-DD"),
       date_to: range[1].format("YYYY-MM-DD"),
       type: type || undefined,
@@ -126,6 +181,7 @@ export default function Moliya() {
       search: search || undefined,
     }),
     [
+      clinicId,
       range,
       type,
       doctorIds,
@@ -151,32 +207,25 @@ export default function Moliya() {
     keepPreviousData: true,
   });
 
-  const { data: employeesData } = useQuery({
-    queryKey: ["financeEmployees"],
-    queryFn: () => AvitcenaAdmin.getEmployeesFilter(1, 100),
+  const { data: filterOptionsData } = useQuery({
+    queryKey: ["financeFilterOptions", clinicId],
+    queryFn: () => AvitcenaAdmin.financeFilterOptions(clinicId),
     staleTime: 5 * 60 * 1000,
   });
 
-  const { data: servicesData } = useQuery({
-    queryKey: ["financeServices"],
-    queryFn: () => AvitcenaAdmin.getServices(1, 100),
-    staleTime: 5 * 60 * 1000,
-  });
-
-  const employees = employeesData?.data || [];
-  const doctors = employees.filter((e: any) => e.role === "doctor");
-  const cashiers = employees.filter((e: any) =>
+  const employees = filterOptionsData?.data?.employees || [];
+  const doctors = employees.filter((e) => e.role === "doctor");
+  const cashiers = employees.filter((e) =>
     ["admin", "registrator"].includes(e.role)
   );
 
-  const serviceCategories = servicesData?.data || [];
-  const allServices = serviceCategories.flatMap((c: any) =>
-    (c.services || []).map((s: any) => ({ id: s.id, name: s.name }))
-  );
+  const serviceCategories = filterOptionsData?.data?.service_categories || [];
+  const allServices = serviceCategories.flatMap((c) => c.services);
 
   const { data: chiqimCategoriesData } = useQuery({
-    queryKey: ["financeCategories", "chiqim-options"],
-    queryFn: () => AvitcenaAdmin.financeCategories({ type: "chiqim" }),
+    queryKey: ["financeCategories", clinicId, "chiqim-options"],
+    queryFn: () =>
+      AvitcenaAdmin.financeCategories({ clinic: clinicId, type: "chiqim" }),
     staleTime: 60 * 1000,
   });
 
@@ -187,7 +236,8 @@ export default function Moliya() {
   const meta = txData?.data?.meta;
 
   const createExpenseMutation = useMutation({
-    mutationFn: AvitcenaAdmin.createExpense,
+    mutationFn: (payload: CreateExpensePayload) =>
+      AvitcenaAdmin.createExpense(payload, clinicId),
     onSuccess: () => {
       notifApi.success({ message: "Chiqim qo'shildi" });
       setIsExpenseModalOpen(false);
@@ -239,7 +289,7 @@ export default function Moliya() {
 
   const categoryLabel = (() => {
     if (!category) return null;
-    const svcCategory = serviceCategories.find((c: any) => c.id === category);
+    const svcCategory = serviceCategories.find((c) => c.id === category);
     if (svcCategory) return svcCategory.name;
     const expCategory = chiqimCategories.find((c) => c.id === category);
     return expCategory?.name || category;
@@ -262,7 +312,7 @@ export default function Moliya() {
     });
   }
   if (serviceId) {
-    const svc = allServices.find((s: any) => s.id === serviceId);
+    const svc = allServices.find((s) => s.id === serviceId);
     chips.push({
       key: "service",
       label: `Xizmat: ${svc?.name || ""}`,
@@ -317,8 +367,8 @@ export default function Moliya() {
 
       {/* Breadcrumb */}
       <div className="flex items-center gap-2 mt-4 text-[13px]">
-        <Link to="/dashboard" className="text-[#8F99A3] hover:text-[#44525C]">
-          Bosh sahifa
+        <Link to="/superadmin/clinics" className="text-[#8F99A3] hover:text-[#44525C]">
+          Klinikalar
         </Link>
         <span className="text-[#C7CED3]">/</span>
         <span className="font-[500] text-[#44525C]">Moliya</span>
@@ -336,6 +386,7 @@ export default function Moliya() {
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
+          {clinicSelect}
           <button
             onClick={() => setIsCategoriesDrawerOpen(true)}
             className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-[10px] border border-[#E0E6EB] text-[13px] font-[500] text-[#44525C] hover:bg-[#F9FAFB] transition-colors cursor-pointer"
@@ -354,12 +405,6 @@ export default function Moliya() {
             className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-[10px] text-white text-[13px] font-[500] bg-[#E5484D] hover:bg-[#D23E42] transition-colors cursor-pointer"
           >
             <FiArrowDownRight /> Chiqim qo'shish
-          </button>
-          <button
-            onClick={() => (window.location.href = "/registration")}
-            className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-[10px] text-white text-[13px] font-[500] bg-[#0D9488] hover:bg-[#0C8377] transition-colors cursor-pointer"
-          >
-            <FiArrowUpRight /> Kirim qo'shish
           </button>
         </div>
       </div>
@@ -542,7 +587,7 @@ export default function Moliya() {
           showSearch
           optionFilterProp="label"
           className="!min-w-[170px] !h-[36px]"
-          options={doctors.map((d: any) => ({ value: d.id, label: d.fio }))}
+          options={doctors.map((d) => ({ value: d.id, label: d.fio }))}
         />
 
         <Select
@@ -556,7 +601,7 @@ export default function Moliya() {
           showSearch
           optionFilterProp="label"
           className="!min-w-[160px] !h-[36px]"
-          options={allServices.map((s: any) => ({ value: s.id, label: s.name }))}
+          options={allServices.map((s) => ({ value: s.id, label: s.name }))}
         />
 
         <Select
@@ -589,7 +634,7 @@ export default function Moliya() {
           className="!min-w-[170px] !h-[36px]"
         >
           <Select.OptGroup label="Xizmat turkumlari">
-            {serviceCategories.map((c: any) => (
+            {serviceCategories.map((c) => (
               <Select.Option key={c.id} value={c.id} label={c.name}>
                 {c.name}
               </Select.Option>
@@ -632,7 +677,7 @@ export default function Moliya() {
           showSearch
           optionFilterProp="label"
           className="!min-w-[160px] !h-[36px]"
-          options={cashiers.map((c: any) => ({ value: c.id, label: c.fio }))}
+          options={cashiers.map((c) => ({ value: c.id, label: c.fio }))}
         />
       </div>
 
@@ -872,6 +917,7 @@ export default function Moliya() {
       <FinanceCategoriesDrawer
         open={isCategoriesDrawerOpen}
         onClose={() => setIsCategoriesDrawerOpen(false)}
+        clinicId={clinicId}
       />
     </div>
   );

@@ -48,10 +48,6 @@ class CustomUser(AbstractUser, AbstractBaseModel):
         null=True
     )
 
-    can_view_finance = models.BooleanField(
-        default=False
-    )
-
     objects = CustomUserManager()
 
     REQUIRED_FIELDS = (

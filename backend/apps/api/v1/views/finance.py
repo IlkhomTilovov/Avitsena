@@ -2,7 +2,8 @@ import csv
 import uuid
 from datetime import datetime, timedelta
 
-from django.db.models import Sum, Q, Count
+from django.core.exceptions import ValidationError
+from django.db.models import Sum, Q, Count, Prefetch
 from django.http import HttpResponse
 from django.utils import timezone
 from drf_spectacular.types import OpenApiTypes
@@ -19,13 +20,16 @@ from apps.api.v1.serializers import (
     FinanceCategoryCreateSerializer,
     FinanceCategoryUpdateSerializer
 )
+from apps.clinics.models import Clinic
 from apps.finance.models import Expense, FinanceCategory
 from apps.patients.models import PatientVisit
+from apps.services.models import Service, ServiceCategory
 from apps.shared.choices import PaymentMethod, FinanceTransactionType, FinanceCategoryColor
 from apps.shared.pagination import CustomPagination
-from apps.shared.permissions import CanViewFinance
+from apps.shared.permissions import IsSuperAdmin
 from apps.shared.response import CustomResponse
 from apps.shared.utils import get_current_month_data
+from apps.users.models import CustomUser
 
 
 DEFAULT_KIRIM_CATEGORIES = [
@@ -47,6 +51,17 @@ DEFAULT_CHIQIM_CATEGORIES = [
     {'name': 'Soliq va yig\'imlar', 'icon': 'shield', 'color': FinanceCategoryColor.GRAY},
     {'name': 'Boshqa', 'icon': 'dots', 'color': FinanceCategoryColor.GRAY},
 ]
+
+
+def _get_clinic(request):
+
+    try:
+
+        return Clinic.objects.get(id=request.query_params.get('clinic'))
+
+    except (Clinic.DoesNotExist, ValidationError):
+
+        raise NotFound('Clinic not found')
 
 
 def _ensure_default_categories(clinic):
@@ -77,7 +92,16 @@ def _ensure_default_categories(clinic):
     FinanceCategory.objects.bulk_create(categories)
 
 
+FINANCE_CLINIC_PARAMETER = OpenApiParameter(
+    name='clinic',
+    description='Clinic id',
+    location=OpenApiParameter.QUERY,
+    type=OpenApiTypes.UUID,
+    required=True
+)
+
 FINANCE_FILTER_PARAMETERS = [
+    FINANCE_CLINIC_PARAMETER,
     OpenApiParameter(name='date_from', description='YYYY-MM-DD', location=OpenApiParameter.QUERY, type=OpenApiTypes.STR),
     OpenApiParameter(name='date_to', description='YYYY-MM-DD', location=OpenApiParameter.QUERY, type=OpenApiTypes.STR),
     OpenApiParameter(name='type', description='kirim | chiqim', location=OpenApiParameter.QUERY, type=OpenApiTypes.STR),
@@ -126,7 +150,7 @@ def _csv_list(request, key):
     return [item.strip() for item in value.split(',') if item.strip()]
 
 
-def _get_finance_querysets(user, request):
+def _get_finance_querysets(clinic, request):
 
     date_from, date_to = _get_date_range(request)
 
@@ -134,7 +158,7 @@ def _get_finance_querysets(user, request):
 
     income_qs = PatientVisit.objects \
         .filter(
-            patient__clinic=user.clinic,
+            patient__clinic=clinic,
             created_at__date__range=(date_from, date_to)
         ) \
         .select_related('patient', 'doctor', 'cashier') \
@@ -142,7 +166,7 @@ def _get_finance_querysets(user, request):
 
     expense_qs = Expense.objects \
         .filter(
-            clinic=user.clinic,
+            clinic=clinic,
             date__range=(date_from, date_to)
         ) \
         .select_related('created_by', 'category')
@@ -299,14 +323,14 @@ def _build_rows(income_qs, expense_qs, type_param):
 
 class FinanceSummaryView(APIView):
 
-    permission_classes = (CanViewFinance, )
+    permission_classes = (IsSuperAdmin, )
 
     @extend_schema(tags=['finance'], parameters=FINANCE_FILTER_PARAMETERS)
     def get(self, request):
 
-        user = request.user
+        clinic = _get_clinic(request)
 
-        income_qs, expense_qs, date_from, date_to = _get_finance_querysets(user, request)
+        income_qs, expense_qs, date_from, date_to = _get_finance_querysets(clinic, request)
 
         total_income = income_qs.aggregate(total=Sum('total_price'))['total'] or 0
 
@@ -319,12 +343,12 @@ class FinanceSummaryView(APIView):
         prev_date_from = prev_date_to - timedelta(days=period_length - 1)
 
         prev_income_qs = PatientVisit.objects.filter(
-            patient__clinic=user.clinic,
+            patient__clinic=clinic,
             created_at__date__range=(prev_date_from, prev_date_to)
         )
 
         prev_expense_qs = Expense.objects.filter(
-            clinic=user.clinic,
+            clinic=clinic,
             date__range=(prev_date_from, prev_date_to)
         )
 
@@ -379,7 +403,7 @@ class FinanceSummaryView(APIView):
 
 class FinanceTransactionsListView(APIView):
 
-    permission_classes = (CanViewFinance, )
+    permission_classes = (IsSuperAdmin, )
 
     @extend_schema(
         tags=['finance'],
@@ -390,9 +414,9 @@ class FinanceTransactionsListView(APIView):
     )
     def get(self, request):
 
-        user = request.user
+        clinic = _get_clinic(request)
 
-        income_qs, expense_qs, date_from, date_to = _get_finance_querysets(user, request)
+        income_qs, expense_qs, date_from, date_to = _get_finance_querysets(clinic, request)
 
         type_param = request.query_params.get('type')
 
@@ -445,14 +469,14 @@ class FinanceTransactionsListView(APIView):
 
 class FinanceExportView(APIView):
 
-    permission_classes = (CanViewFinance, )
+    permission_classes = (IsSuperAdmin, )
 
     @extend_schema(tags=['finance'], parameters=FINANCE_FILTER_PARAMETERS)
     def get(self, request):
 
-        user = request.user
+        clinic = _get_clinic(request)
 
-        income_qs, expense_qs, date_from, date_to = _get_finance_querysets(user, request)
+        income_qs, expense_qs, date_from, date_to = _get_finance_querysets(clinic, request)
 
         type_param = request.query_params.get('type')
 
@@ -489,9 +513,49 @@ class FinanceExportView(APIView):
         return response
 
 
+class FinanceFilterOptionsView(APIView):
+
+    permission_classes = (IsSuperAdmin, )
+
+    @extend_schema(tags=['finance'], parameters=[FINANCE_CLINIC_PARAMETER])
+    def get(self, request):
+
+        clinic = _get_clinic(request)
+
+        employees = CustomUser.objects \
+            .filter(clinic=clinic) \
+            .order_by('fio') \
+            .values('id', 'fio', 'role')
+
+        categories = ServiceCategory.objects \
+            .filter(clinic=clinic) \
+            .prefetch_related(
+                Prefetch(
+                    'services',
+                    queryset=Service.objects.filter(is_active=True)
+                )
+            ) \
+            .order_by('name')
+
+        return CustomResponse(data={
+            'employees': list(employees),
+            'service_categories': [
+                {
+                    'id': category.id,
+                    'name': category.name,
+                    'services': [
+                        {'id': service.id, 'name': service.name}
+                        for service in category.services.all()
+                    ]
+                }
+                for category in categories
+            ]
+        })
+
+
 class FinanceCategoryListCreateView(APIView):
 
-    permission_classes = (CanViewFinance, )
+    permission_classes = (IsSuperAdmin, )
     serializer_class = FinanceCategorySerializer
 
     @extend_schema(
@@ -505,9 +569,9 @@ class FinanceCategoryListCreateView(APIView):
     )
     def get(self, request):
 
-        user = request.user
+        clinic = _get_clinic(request)
 
-        _ensure_default_categories(user.clinic)
+        _ensure_default_categories(clinic)
 
         date_from, date_to = _get_date_range(request)
 
@@ -515,7 +579,7 @@ class FinanceCategoryListCreateView(APIView):
 
         include_archived = request.query_params.get('include_archived') == 'true'
 
-        queryset = FinanceCategory.objects.filter(clinic=user.clinic)
+        queryset = FinanceCategory.objects.filter(clinic=clinic)
 
         if not include_archived:
 
@@ -528,13 +592,13 @@ class FinanceCategoryListCreateView(APIView):
         categories = list(queryset)
 
         income_total = PatientVisit.objects \
-            .filter(patient__clinic=user.clinic, created_at__date__range=(date_from, date_to)) \
+            .filter(patient__clinic=clinic, created_at__date__range=(date_from, date_to)) \
             .aggregate(total=Sum('total_price'), count=Count('id'))
 
         expense_totals = {
             item['category_id']: item
             for item in Expense.objects
-            .filter(clinic=user.clinic, date__range=(date_from, date_to))
+            .filter(clinic=clinic, date__range=(date_from, date_to))
             .values('category_id')
             .annotate(total=Sum('amount'), count=Count('id'))
         }
@@ -573,11 +637,13 @@ class FinanceCategoryListCreateView(APIView):
     @extend_schema(tags=['finance'], request=FinanceCategoryCreateSerializer, responses={status.HTTP_201_CREATED: FinanceCategorySerializer})
     def post(self, request):
 
-        _ensure_default_categories(request.user.clinic)
+        clinic = _get_clinic(request)
+
+        _ensure_default_categories(clinic)
 
         serializer = FinanceCategoryCreateSerializer(
             data=request.data,
-            context={'request': request}
+            context={'clinic': clinic}
         )
 
         if serializer.is_valid():
@@ -599,7 +665,7 @@ class FinanceCategoryListCreateView(APIView):
 
 class FinanceCategoryDetailView(APIView):
 
-    permission_classes = (CanViewFinance, )
+    permission_classes = (IsSuperAdmin, )
     serializer_class = FinanceCategorySerializer
 
     def get_object(self):
@@ -608,7 +674,7 @@ class FinanceCategoryDetailView(APIView):
 
             return FinanceCategory.objects.get(
                 id=self.kwargs['id'],
-                clinic=self.request.user.clinic
+                clinic=_get_clinic(self.request)
             )
 
         except FinanceCategory.DoesNotExist:
@@ -641,7 +707,7 @@ class FinanceCategoryDetailView(APIView):
 
 class ExpenseCreateView(APIView):
 
-    permission_classes = (CanViewFinance, )
+    permission_classes = (IsSuperAdmin, )
     serializer_class = ExpenseCreateSerializer
     pagination_class = CustomPagination
 
@@ -650,7 +716,7 @@ class ExpenseCreateView(APIView):
 
         serializer = self.serializer_class(
             data=request.data,
-            context={'request': request}
+            context={'request': request, 'clinic': _get_clinic(request)}
         )
 
         if serializer.is_valid():
@@ -674,7 +740,7 @@ class ExpenseCreateView(APIView):
 
 class ExpenseDetailView(APIView):
 
-    permission_classes = (CanViewFinance, )
+    permission_classes = (IsSuperAdmin, )
     serializer_class = ExpenseSerializer
 
     def get_object(self):
@@ -683,7 +749,7 @@ class ExpenseDetailView(APIView):
 
             return Expense.objects.get(
                 id=self.kwargs['id'],
-                clinic=self.request.user.clinic
+                clinic=_get_clinic(self.request)
             )
 
         except Expense.DoesNotExist:

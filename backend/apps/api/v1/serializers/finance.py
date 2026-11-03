@@ -51,10 +51,8 @@ class FinanceCategoryCreateSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
 
-        request = self.context['request']
-
         validated_data.update({
-            'clinic': request.user.clinic
+            'clinic': self.context['clinic']
         })
 
         return FinanceCategory.objects.create(**validated_data)
@@ -169,9 +167,7 @@ class ExpenseCreateSerializer(serializers.ModelSerializer):
 
     def validate_category(self, value):
 
-        request = self.context['request']
-
-        if value.clinic_id != request.user.clinic_id:
+        if value.clinic_id != self.context['clinic'].id:
 
             raise serializers.ValidationError("Kategoriya topilmadi.")
 
@@ -190,7 +186,7 @@ class ExpenseCreateSerializer(serializers.ModelSerializer):
         request = self.context['request']
 
         validated_data.update({
-            'clinic': request.user.clinic,
+            'clinic': self.context['clinic'],
             'created_by': request.user
         })
 
@@ -221,9 +217,7 @@ class ExpenseUpdateSerializer(serializers.ModelSerializer):
 
     def validate_category(self, value):
 
-        request = self.context['request']
-
-        if value.clinic_id != request.user.clinic_id:
+        if value.clinic_id != self.instance.clinic_id:
 
             raise serializers.ValidationError("Kategoriya topilmadi.")
 

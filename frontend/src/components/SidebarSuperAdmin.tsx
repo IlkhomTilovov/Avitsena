@@ -2,6 +2,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { Menu } from "antd";
 import { HiOutlineBuildingOffice2, HiOutlineChatBubbleLeftRight } from "react-icons/hi2";
 import { FiLogOut } from "react-icons/fi";
+import { LuWallet } from "react-icons/lu";
 import { MenuFoldOutlined, MenuUnfoldOutlined } from "@ant-design/icons";
 import { useCreateContext } from "../context/ContextApi";
 import logo from "../../public/images/logo.svg";
@@ -28,6 +29,11 @@ export default function SidebarSuperAdmin() {
       key: "murojaatlar",
       icon: <HiOutlineChatBubbleLeftRight />,
       label: "Murojaatlar",
+    },
+    {
+      key: "moliya",
+      icon: <LuWallet />,
+      label: "Moliya",
     },
   ];
 

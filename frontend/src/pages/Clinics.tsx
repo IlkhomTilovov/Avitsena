@@ -1,4 +1,4 @@
-import { FiPlus } from "react-icons/fi";
+import { FiEdit2, FiPlus } from "react-icons/fi";
 import {
   Card,
   Form,
@@ -6,6 +6,7 @@ import {
   Modal,
   notification,
   Pagination,
+  Select,
   Spin,
 } from "antd";
 import { HiOutlineBuildingOffice2 } from "react-icons/hi2";
@@ -36,8 +37,17 @@ type ClinicObjType = {
   };
 };
 
+type ClinicUpdateType = {
+  name: string;
+  phone: string;
+  address: string;
+  status: string;
+};
+
 export default function Clinics() {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingClinic, setEditingClinic] =
+    useState<ClinicResponseType | null>(null);
   const [page, setPage] = useState(1);
   const per_page = 10;
 
@@ -90,6 +100,30 @@ export default function Clinics() {
   const addClinicFunc = (value: ClinicObjType) => {
     addClinicMutate(value);
   };
+
+  const { mutate: updateClinicMutate, isLoading: updateClinicLoading } =
+    useMutation<
+      ClinicResponseType,
+      Error,
+      { id: string; obj: ClinicUpdateType }
+    >(({ id, obj }) => AvitcenaAdmin.updateClinic(id, obj), {
+      onSuccess: () => {
+        queryClient.invalidateQueries(["clinics"]);
+        openNotificationWithIcon(
+          "success",
+          "Klinika yangilandi.",
+          "Klinika ma'lumotlari muvaffaqiyatli saqlandi!"
+        );
+        setEditingClinic(null);
+      },
+      onError: (error) => {
+        openNotificationWithIcon(
+          "error",
+          "Xatolik yuz berdi!",
+          error?.message || "Qaytadan urunib ko'ring iltimos!"
+        );
+      },
+    });
 
   if (isLoading) {
     return (
@@ -144,6 +178,14 @@ export default function Clinics() {
               <button className="px-2.5 py-1 rounded-full text-[#5AA6F2] bg-[#EEF6FD] flex items-center text-[14px] gap-1.5">
                 {item.status}
               </button>
+              <button
+                onClick={() => setEditingClinic(item)}
+                aria-label={`${item.name} klinikasini tahrirlash`}
+                title="Tahrirlash"
+                className="w-[34px] h-[34px] rounded-full text-[#2A81D8] bg-[#E7F0FA] flex justify-center items-center cursor-pointer hover:shadow-md transition-all duration-150"
+              >
+                <FiEdit2 />
+              </button>
             </div>
           </div>
         ))}
@@ -160,6 +202,70 @@ export default function Clinics() {
           </div>
         )}
       </div>
+
+      {/* Tahrirlash modali */}
+      <Modal
+        title="Klinikani tahrirlash"
+        open={!!editingClinic}
+        onCancel={() => setEditingClinic(null)}
+        footer={false}
+      >
+        {editingClinic && (
+          <Card className="!border-none">
+            <Form
+              key={editingClinic.id}
+              initialValues={{
+                name: editingClinic.name,
+                phone: editingClinic.phone,
+                address: editingClinic.address,
+                status: editingClinic.status,
+              }}
+              onFinish={(obj: ClinicUpdateType) =>
+                updateClinicMutate({ id: editingClinic.id, obj })
+              }
+              layout="vertical"
+            >
+              <Form.Item
+                name="name"
+                label="Klinika nomi"
+                rules={[
+                  { required: true, message: "Klinika nomi kiritilishi kerak!" },
+                ]}
+              >
+                <Input placeholder="Klinika nomi" />
+              </Form.Item>
+              <Form.Item
+                name="phone"
+                label="Klinika telefon raqami"
+                rules={[
+                  { max: 13, message: "Telefon raqam 13 belgidan oshmasin!" },
+                ]}
+              >
+                <Input placeholder="+998901234567" />
+              </Form.Item>
+              <Form.Item name="address" label="Manzil">
+                <Input placeholder="Klinika manzili" />
+              </Form.Item>
+              <Form.Item name="status" label="Holati">
+                <Select
+                  options={[
+                    { value: "active", label: "Faol" },
+                    { value: "inactive", label: "Nofaol" },
+                  ]}
+                />
+              </Form.Item>
+
+              <button
+                type="submit"
+                disabled={updateClinicLoading}
+                className="w-full !rounded-[4px] !h-[39px] !bg-[#2B7FFF] !text-[#fff] flex justify-center items-center cursor-pointer mt-2 disabled:opacity-70"
+              >
+                {updateClinicLoading ? "Saqlanmoqda..." : "Saqlash"}
+              </button>
+            </Form>
+          </Card>
+        )}
+      </Modal>
 
       {/* Modal */}
       <Modal

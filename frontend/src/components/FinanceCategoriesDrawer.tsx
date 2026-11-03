@@ -20,7 +20,11 @@ import {
   FiArrowDownRight,
 } from "react-icons/fi";
 import { TbFlask, TbPill } from "react-icons/tb";
-import { AvitcenaAdmin, FinanceCategory } from "../queries/query";
+import {
+  AvitcenaAdmin,
+  CreateFinanceCategoryPayload,
+  FinanceCategory,
+} from "../queries/query";
 
 const ICON_OPTIONS: { key: string; icon: React.ReactNode }[] = [
   { key: "calendar", icon: <FiCalendar /> },
@@ -63,9 +67,11 @@ function money(n: number) {
 export default function FinanceCategoriesDrawer({
   open,
   onClose,
+  clinicId,
 }: {
   open: boolean;
   onClose: () => void;
+  clinicId: string;
 }) {
   const queryClient = useQueryClient();
   const [notifApi, contextHolder] = notification.useNotification();
@@ -80,16 +86,16 @@ export default function FinanceCategoriesDrawer({
   const dateTo = useMemo(() => dayjs().endOf("month").format("YYYY-MM-DD"), []);
 
   const { data: kirimData } = useQuery({
-    queryKey: ["financeCategories", "kirim", dateFrom, dateTo],
+    queryKey: ["financeCategories", clinicId, "kirim", dateFrom, dateTo],
     queryFn: () =>
-      AvitcenaAdmin.financeCategories({ type: "kirim", date_from: dateFrom, date_to: dateTo }),
+      AvitcenaAdmin.financeCategories({ clinic: clinicId, type: "kirim", date_from: dateFrom, date_to: dateTo }),
     enabled: open,
   });
 
   const { data: chiqimData } = useQuery({
-    queryKey: ["financeCategories", "chiqim", dateFrom, dateTo],
+    queryKey: ["financeCategories", clinicId, "chiqim", dateFrom, dateTo],
     queryFn: () =>
-      AvitcenaAdmin.financeCategories({ type: "chiqim", date_from: dateFrom, date_to: dateTo }),
+      AvitcenaAdmin.financeCategories({ clinic: clinicId, type: "chiqim", date_from: dateFrom, date_to: dateTo }),
     enabled: open,
   });
 
@@ -107,7 +113,8 @@ export default function FinanceCategoriesDrawer({
   };
 
   const createMutation = useMutation({
-    mutationFn: AvitcenaAdmin.createFinanceCategory,
+    mutationFn: (payload: CreateFinanceCategoryPayload) =>
+      AvitcenaAdmin.createFinanceCategory(payload, clinicId),
     onSuccess: () => {
       notifApi.success({ message: "Kategoriya qo'shildi" });
       resetForm();
@@ -120,7 +127,7 @@ export default function FinanceCategoriesDrawer({
 
   const updateMutation = useMutation({
     mutationFn: ({ id, payload }: { id: string; payload: { name?: string; icon?: string; color?: string; archived?: boolean } }) =>
-      AvitcenaAdmin.updateFinanceCategory(id, payload),
+      AvitcenaAdmin.updateFinanceCategory(id, payload, clinicId),
     onSuccess: () => {
       notifApi.success({ message: "Yangilandi" });
       resetForm();
