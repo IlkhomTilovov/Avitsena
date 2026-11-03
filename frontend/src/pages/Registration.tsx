@@ -10,7 +10,7 @@ import {
 } from "antd";
 import dayjs, { Dayjs } from "dayjs";
 import { useMutation, useQuery, useQueryClient } from "react-query";
-import { OneMedAdmin } from "../queries/query";
+import { AvitcenaAdmin } from "../queries/query";
 import { LoadingOutlined, CheckCircleFilled } from "@ant-design/icons";
 import { useEffect, useState } from "react";
 import { FiUpload, FiCamera } from "react-icons/fi";
@@ -356,7 +356,7 @@ export default function Registration() {
     string
   >(
     (id) =>
-      OneMedAdmin.addNewVisit(id, {
+      AvitcenaAdmin.addNewVisit(id, {
         doctor: handleSelectDoctorState,
         services: selectedServices,
         payment_method: selectedPaymentMethod
@@ -386,7 +386,7 @@ export default function Registration() {
 
   const { mutate: addPatientMutate, isLoading: addPatientLoading } =
     useMutation<PatientResponse, Error, PatientRequest>(
-      (obj) => OneMedAdmin.addPatient(obj),
+      (obj) => AvitcenaAdmin.addPatient(obj),
       {
         onSuccess: (data) => {
           queryClient.invalidateQueries();
@@ -415,7 +415,7 @@ export default function Registration() {
   // Eski bemorni yangilash
   const { mutate: updatePatientMutate, isLoading: updatePatientLoading } =
     useMutation<PatientResponse, Error, { id: string; obj: PatientRequest }>(
-      ({ id, obj }) => OneMedAdmin.updatePatient(id, obj),
+      ({ id, obj }) => AvitcenaAdmin.updatePatient(id, obj),
       {
         onSuccess: (data) => {
           queryClient.invalidateQueries();
@@ -476,7 +476,7 @@ export default function Registration() {
   const [options, setOptions] = useState<PatientOption[]>([]);
   const [value, setValue] = useState("");
   const { mutate: searchMutate } = useMutation<any, Error, string>(
-    (search) => OneMedAdmin.searchPatient(search),
+    (search) => AvitcenaAdmin.searchPatient(search),
     {
       onSuccess: (data) => {
         const mapped = data.data.map((item: any) => ({
@@ -507,7 +507,7 @@ export default function Registration() {
     PatientSelectResponse,
     Error,
     string
-  >((id: string) => OneMedAdmin.selectPatient(id), {
+  >((id: string) => AvitcenaAdmin.selectPatient(id), {
     onSuccess: (data) => {
       // setSelectedPatientId(data.data.id);
       setDocType(data.data.document_type);
@@ -596,7 +596,7 @@ export default function Registration() {
   // 3. Xodimlar (shifokorlar) ro‘yxati
   const { data: employeesData } = useQuery({
     queryKey: ["employees", 1, 20, "", "doctor"],
-    queryFn: () => OneMedAdmin.getEmployeesFilter(1, 20, "", "doctor"),
+    queryFn: () => AvitcenaAdmin.getEmployeesFilter(1, 20, "", "doctor"),
     keepPreviousData: true,
     staleTime: Infinity,
     cacheTime: Infinity,
@@ -605,7 +605,7 @@ export default function Registration() {
   // 4. Doktordan xizmatlar olish
   const { data: categories } = useQuery<Category[]>({
     queryKey: ["services", handleSelectDoctorState],
-    queryFn: () => OneMedAdmin.getServicesFromDoctor(handleSelectDoctorState),
+    queryFn: () => AvitcenaAdmin.getServicesFromDoctor(handleSelectDoctorState),
     enabled: !!handleSelectDoctorState,
     staleTime: Infinity,
     cacheTime: Infinity,

@@ -13,7 +13,7 @@ def print_check_for_visit():
     idProduct = 0x070b
 
     text = (
-        "FIRMA NOMI: ONE MED CLINC\n" \
+        "FIRMA NOMI: AVITCENA CLINIC\n" \
         "Bemor: O\'rolov Shohruh\n" \
         "Sana: 27.09.2025\n" \
         "Xizmat turi: Stomatologiya\n" \

@@ -23,7 +23,7 @@ import {
 } from "react-icons/fi";
 import { LuLayers } from "react-icons/lu";
 import {
-  OneMedAdmin,
+  AvitcenaAdmin,
   FinanceFilters,
   FinanceTransaction,
 } from "../queries/query";
@@ -140,26 +140,26 @@ export default function Moliya() {
 
   const { data: summaryData } = useQuery({
     queryKey: ["financeSummary", filters],
-    queryFn: () => OneMedAdmin.financeSummary(filters),
+    queryFn: () => AvitcenaAdmin.financeSummary(filters),
     keepPreviousData: true,
   });
 
   const { data: txData, isLoading: isTxLoading } = useQuery({
     queryKey: ["financeTransactions", filters, page, perPage],
     queryFn: () =>
-      OneMedAdmin.financeTransactions({ ...filters, page, per_page: perPage }),
+      AvitcenaAdmin.financeTransactions({ ...filters, page, per_page: perPage }),
     keepPreviousData: true,
   });
 
   const { data: employeesData } = useQuery({
     queryKey: ["financeEmployees"],
-    queryFn: () => OneMedAdmin.getEmployeesFilter(1, 100),
+    queryFn: () => AvitcenaAdmin.getEmployeesFilter(1, 100),
     staleTime: 5 * 60 * 1000,
   });
 
   const { data: servicesData } = useQuery({
     queryKey: ["financeServices"],
-    queryFn: () => OneMedAdmin.getServices(1, 100),
+    queryFn: () => AvitcenaAdmin.getServices(1, 100),
     staleTime: 5 * 60 * 1000,
   });
 
@@ -176,7 +176,7 @@ export default function Moliya() {
 
   const { data: chiqimCategoriesData } = useQuery({
     queryKey: ["financeCategories", "chiqim-options"],
-    queryFn: () => OneMedAdmin.financeCategories({ type: "chiqim" }),
+    queryFn: () => AvitcenaAdmin.financeCategories({ type: "chiqim" }),
     staleTime: 60 * 1000,
   });
 
@@ -187,7 +187,7 @@ export default function Moliya() {
   const meta = txData?.data?.meta;
 
   const createExpenseMutation = useMutation({
-    mutationFn: OneMedAdmin.createExpense,
+    mutationFn: AvitcenaAdmin.createExpense,
     onSuccess: () => {
       notifApi.success({ message: "Chiqim qo'shildi" });
       setIsExpenseModalOpen(false);
@@ -215,7 +215,7 @@ export default function Moliya() {
   };
 
   const exportMutation = useMutation({
-    mutationFn: () => OneMedAdmin.financeExport(filters),
+    mutationFn: () => AvitcenaAdmin.financeExport(filters),
     onError: () => {
       notifApi.error({
         message: "Xatolik",

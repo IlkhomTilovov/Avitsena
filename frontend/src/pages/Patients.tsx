@@ -7,7 +7,7 @@ import { useQuery } from "react-query";
 import { LoadingOutlined } from "@ant-design/icons";
 import { useEffect, useState } from "react";
 import dayjs, { Dayjs } from "dayjs";
-import { OneMedAdmin } from "../queries/query";
+import { AvitcenaAdmin } from "../queries/query";
 import DashboardCard from "../components/DashboardCard";
 
 type PatientSearchItem = {
@@ -91,7 +91,7 @@ export default function Patients() {
   const { data, isLoading } = useQuery<PatientSearchResponse>({
     queryKey: ["patients", page, per_page, searchText, status, doctorId, month?.format("YYYY-MM")],
     queryFn: () =>
-      OneMedAdmin.getPatientsAll(
+      AvitcenaAdmin.getPatientsAll(
         page,
         per_page,
         searchText,
@@ -105,12 +105,12 @@ export default function Patients() {
 
   const { data: statsData } = useQuery({
     queryKey: ["patients-stats"],
-    queryFn: () => OneMedAdmin.getPatientsStats(),
+    queryFn: () => AvitcenaAdmin.getPatientsStats(),
   });
 
   const { data: doctorsData } = useQuery({
     queryKey: ["doctors-for-filter"],
-    queryFn: () => OneMedAdmin.getEmployeesFilter(1, 100, undefined, "doctor"),
+    queryFn: () => AvitcenaAdmin.getEmployeesFilter(1, 100, undefined, "doctor"),
   });
 
   const stats = statsData?.data;

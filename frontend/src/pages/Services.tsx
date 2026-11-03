@@ -12,7 +12,7 @@ import {
 } from "antd";
 import { LoadingOutlined } from "@ant-design/icons";
 import { useMutation, useQuery, useQueryClient } from "react-query";
-import { OneMedAdmin } from "../queries/query";
+import { AvitcenaAdmin } from "../queries/query";
 import { FiDownload, FiPlus, FiSearch, FiEdit2, FiTrash2 } from "react-icons/fi";
 import {
   TbCategoryPlus,
@@ -117,14 +117,14 @@ export default function Services() {
 
   const { data: statsData } = useQuery<{ success: boolean; data: ServicesStats }>({
     queryKey: ["servicesStats"],
-    queryFn: () => OneMedAdmin.getServicesStats(),
+    queryFn: () => AvitcenaAdmin.getServicesStats(),
   });
 
   const { data: categoryListData, isLoading: categoriesLoading } = useQuery<{
     data: CategoryListItem[];
   }>({
     queryKey: ["getCategorylist", 1, 100],
-    queryFn: () => OneMedAdmin.getCategorylist(1, 100),
+    queryFn: () => AvitcenaAdmin.getCategorylist(1, 100),
     keepPreviousData: true,
   });
 
@@ -145,7 +145,7 @@ export default function Services() {
     isLoading: categoryDetailLoading,
   } = useQuery<{ data: CategoryDetail }>({
     queryKey: ["getCategory", selectedCategoryId],
-    queryFn: () => OneMedAdmin.getOneCategory(selectedCategoryId as string),
+    queryFn: () => AvitcenaAdmin.getOneCategory(selectedCategoryId as string),
     enabled: !!selectedCategoryId,
   });
 
@@ -159,7 +159,7 @@ export default function Services() {
 
   // Yangi kategoriya qo'shish
   const { mutate: addCategoryMutate, isLoading: addCategoryLoading } =
-    useMutation((obj: { name: string }) => OneMedAdmin.addCategory(obj), {
+    useMutation((obj: { name: string }) => AvitcenaAdmin.addCategory(obj), {
       onSuccess: (data: any) => {
         setNewCategoryName("");
         refreshAll();
@@ -186,7 +186,7 @@ export default function Services() {
   const { mutate: updateCategoryMutate, isLoading: updateCategoryLoading } =
     useMutation(
       (data: { id: string; name: string }) =>
-        OneMedAdmin.updateCategory(data.id, { name: data.name }),
+        AvitcenaAdmin.updateCategory(data.id, { name: data.name }),
       {
         onSuccess: () => {
           setCategoryEditMode(false);
@@ -197,7 +197,7 @@ export default function Services() {
 
   // Kategoriyani o'chirish
   const { mutate: deleteCategoryMutate } = useMutation(
-    (id: string) => OneMedAdmin.deleteCategory(id),
+    (id: string) => AvitcenaAdmin.deleteCategory(id),
     {
       onSuccess: () => {
         setSelectedCategoryId(null);
@@ -227,7 +227,7 @@ export default function Services() {
       (obj: {
         category: string;
         services: { name: string; price: number; duration_minutes?: number | null }[];
-      }) => OneMedAdmin.addServices(obj),
+      }) => AvitcenaAdmin.addServices(obj),
       {
         onSuccess: () => {
           addServiceForm.resetFields();
@@ -266,7 +266,7 @@ export default function Services() {
   const { mutate: editServiceMutate, isLoading: editServiceLoading } =
     useMutation(
       (data: { id: string; obj: any }) =>
-        OneMedAdmin.editService(data.id, data.obj),
+        AvitcenaAdmin.editService(data.id, data.obj),
       {
         onSuccess: () => {
           setEditingService(null);
@@ -295,7 +295,7 @@ export default function Services() {
     null
   );
   const { mutate: deleteServiceMutate } = useMutation(
-    (id: string) => OneMedAdmin.deleteService(id),
+    (id: string) => AvitcenaAdmin.deleteService(id),
     {
       onSuccess: () => {
         setDeletingServiceId(null);

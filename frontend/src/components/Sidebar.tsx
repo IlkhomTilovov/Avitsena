@@ -11,7 +11,7 @@ import { FiLogOut, FiHeadphones, FiCheckCircle, FiClock } from "react-icons/fi";
 import { MenuFoldOutlined, MenuUnfoldOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import { useCreateContext } from "../context/ContextApi";
-import { OneMedAdmin, SupportMessageItem } from "../queries/query";
+import { AvitcenaAdmin, SupportMessageItem } from "../queries/query";
 import SecureStorage from "react-secure-storage";
 import logo from "../../public/images/logo.svg";
 import logoText from "../../public/images/logo-text.svg";
@@ -36,14 +36,14 @@ export default function Sidebar() {
   const historyEndRef = useRef<HTMLDivElement>(null);
 
   const { data: allStatData } = useQuery({
-    queryFn: () => OneMedAdmin.allStat(),
+    queryFn: () => AvitcenaAdmin.allStat(),
     queryKey: ["allStat"],
     staleTime: Infinity,
     cacheTime: Infinity,
   });
 
   const { data: supportHistoryData, isLoading: isSupportHistoryLoading } = useQuery({
-    queryFn: () => OneMedAdmin.getSupportMessages(1, 50),
+    queryFn: () => AvitcenaAdmin.getSupportMessages(1, 50),
     queryKey: ["mySupportMessages"],
     enabled: isSupportModalOpen,
   });
@@ -59,7 +59,7 @@ export default function Sidebar() {
   }, [isSupportModalOpen, supportHistory.length]);
 
   const sendSupportMutation = useMutation({
-    mutationFn: OneMedAdmin.sendSupportMessage,
+    mutationFn: AvitcenaAdmin.sendSupportMessage,
     onSuccess: () => {
       notifApi.success({ message: "Murojaatingiz yuborildi" });
       setSupportMessage("");
@@ -151,7 +151,7 @@ export default function Sidebar() {
         <div className="flex items-center gap-3">
           <img loading="lazy" src={logo} alt="" className="w-[28px] shrink-0" />
           {!collapsed && (
-            <img loading="lazy" src={logoText} alt="One Med" className="h-[18px]" />
+            <img loading="lazy" src={logoText} alt="Avitcena" className="h-[18px]" />
           )}
         </div>
 

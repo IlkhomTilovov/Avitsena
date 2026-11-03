@@ -15,9 +15,9 @@ schema_view_v1 = SpectacularAPIView.as_view(
         path('v1/', include('apps.api.v1.urls'))
     ],
     custom_settings={
-        'TITLE': 'OneMed Backend API docs',
+        'TITLE': 'Avitcena Backend API docs',
         'VERSION': 1.0,
-        'DESCRIPTION': 'Official documentation for the OneMed Backend API, version 1.0'
+        'DESCRIPTION': 'Official documentation for the Avitcena Backend API, version 1.0'
     }
 )   
 

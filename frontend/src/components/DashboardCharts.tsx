@@ -11,7 +11,7 @@ import {
 } from "recharts";
 import "../App.css";
 import { useQuery } from "react-query";
-import { OneMedAdmin } from "../queries/query";
+import { AvitcenaAdmin } from "../queries/query";
 import { Segmented, Spin } from "antd";
 import { useState } from "react";
 import { LoadingOutlined } from "@ant-design/icons";
@@ -41,7 +41,7 @@ export default function DashboardCharts({ chartId }: Props) {
 
   if (chartId === 1) {
     const { data: lineChartData, isLoading: lineChartLoading } = useQuery({
-      queryFn: () => OneMedAdmin.lineChartData(type),
+      queryFn: () => AvitcenaAdmin.lineChartData(type),
       queryKey: ["lineChartData", type], // type qo'shildi, cache to'g'ri ishlasin
       cacheTime: Infinity,
       enabled: !!type,
@@ -114,7 +114,7 @@ export default function DashboardCharts({ chartId }: Props) {
 
   if (chartId === 2) {
     const { data: barChartData, isLoading: barChartLoading } = useQuery({
-      queryFn: () => OneMedAdmin.barChartData(),
+      queryFn: () => AvitcenaAdmin.barChartData(),
       queryKey: ["barChartData"],
       cacheTime: Infinity,
       staleTime: Infinity,
@@ -173,7 +173,7 @@ export default function DashboardCharts({ chartId }: Props) {
 
   if (chartId === 3) {
     const { data: triangleBarData, isLoading: triangleBarloading } = useQuery({
-      queryFn: () => OneMedAdmin.tringleData(type3),
+      queryFn: () => AvitcenaAdmin.tringleData(type3),
       queryKey: ["tringleData", type3],
       cacheTime: Infinity,
       staleTime: Infinity,

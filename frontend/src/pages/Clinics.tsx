@@ -12,7 +12,7 @@ import { HiOutlineBuildingOffice2 } from "react-icons/hi2";
 import { BsTelephone } from "react-icons/bs";
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "react-query";
-import { OneMedAdmin } from "../queries/query";
+import { AvitcenaAdmin } from "../queries/query";
 import { LoadingOutlined } from "@ant-design/icons";
 import "../App.css";
 
@@ -58,7 +58,7 @@ export default function Clinics() {
 
   const { data: clinicsData, isLoading } = useQuery({
     queryKey: ["clinics", page, per_page],
-    queryFn: () => OneMedAdmin.getClinics(page, per_page),
+    queryFn: () => AvitcenaAdmin.getClinics(page, per_page),
     keepPreviousData: true,
     refetchOnWindowFocus: false,
   });
@@ -68,7 +68,7 @@ export default function Clinics() {
     ClinicResponseType,
     Error,
     ClinicObjType
-  >((obj) => OneMedAdmin.addClinic(obj), {
+  >((obj) => AvitcenaAdmin.addClinic(obj), {
     onSuccess: () => {
       queryClient.invalidateQueries(["clinics"]);
       openNotificationWithIcon(

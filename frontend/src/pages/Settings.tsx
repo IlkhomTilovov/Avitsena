@@ -6,7 +6,7 @@ import { useMutation, useQuery, useQueryClient } from "react-query";
 import {
   ChangePasswordPayload,
   ChangePasswordResponse,
-  OneMedAdmin,
+  AvitcenaAdmin,
 } from "../queries/query";
 import { useEffect, useState } from "react";
 
@@ -33,6 +33,7 @@ export interface UserProfile {
   doctor: Doctor | null;
   status: string;
   more: string | null;
+  clinic_name: string | null;
 }
 
 export interface UserProfileResponse {
@@ -113,7 +114,7 @@ export default function Settings() {
   // Query orqali user profile malumotlarini olish
   const { data: getUserProfileData } = useQuery<UserProfileResponse>({
     queryKey: ["getUserProfile"],
-    queryFn: () => OneMedAdmin.getUserProfile(),
+    queryFn: () => AvitcenaAdmin.getUserProfile(),
     staleTime: Infinity,
     cacheTime: Infinity,
   });
@@ -138,7 +139,7 @@ export default function Settings() {
 
   const { mutate: updateProfileMutate, isLoading: updateProfileDataLoading } =
     useMutation<UserProfileResponse, Error, UpdateProfilePayload>(
-      (obj) => OneMedAdmin.updateProfileData(obj),
+      (obj) => AvitcenaAdmin.updateProfileData(obj),
       {
         onSuccess: () => {
           queryClient.invalidateQueries(["getUserProfile"]);
@@ -163,7 +164,7 @@ export default function Settings() {
     ChangePasswordResponse,
     unknown,
     ChangePasswordPayload
-  >((payload) => OneMedAdmin.changePassword(payload), {
+  >((payload) => AvitcenaAdmin.changePassword(payload), {
     onSuccess: () => {
       openNotificationWithIcon(
         "success",

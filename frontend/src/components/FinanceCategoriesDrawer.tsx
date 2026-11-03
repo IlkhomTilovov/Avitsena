@@ -20,7 +20,7 @@ import {
   FiArrowDownRight,
 } from "react-icons/fi";
 import { TbFlask, TbPill } from "react-icons/tb";
-import { OneMedAdmin, FinanceCategory } from "../queries/query";
+import { AvitcenaAdmin, FinanceCategory } from "../queries/query";
 
 const ICON_OPTIONS: { key: string; icon: React.ReactNode }[] = [
   { key: "calendar", icon: <FiCalendar /> },
@@ -82,14 +82,14 @@ export default function FinanceCategoriesDrawer({
   const { data: kirimData } = useQuery({
     queryKey: ["financeCategories", "kirim", dateFrom, dateTo],
     queryFn: () =>
-      OneMedAdmin.financeCategories({ type: "kirim", date_from: dateFrom, date_to: dateTo }),
+      AvitcenaAdmin.financeCategories({ type: "kirim", date_from: dateFrom, date_to: dateTo }),
     enabled: open,
   });
 
   const { data: chiqimData } = useQuery({
     queryKey: ["financeCategories", "chiqim", dateFrom, dateTo],
     queryFn: () =>
-      OneMedAdmin.financeCategories({ type: "chiqim", date_from: dateFrom, date_to: dateTo }),
+      AvitcenaAdmin.financeCategories({ type: "chiqim", date_from: dateFrom, date_to: dateTo }),
     enabled: open,
   });
 
@@ -107,7 +107,7 @@ export default function FinanceCategoriesDrawer({
   };
 
   const createMutation = useMutation({
-    mutationFn: OneMedAdmin.createFinanceCategory,
+    mutationFn: AvitcenaAdmin.createFinanceCategory,
     onSuccess: () => {
       notifApi.success({ message: "Kategoriya qo'shildi" });
       resetForm();
@@ -120,7 +120,7 @@ export default function FinanceCategoriesDrawer({
 
   const updateMutation = useMutation({
     mutationFn: ({ id, payload }: { id: string; payload: { name?: string; icon?: string; color?: string; archived?: boolean } }) =>
-      OneMedAdmin.updateFinanceCategory(id, payload),
+      AvitcenaAdmin.updateFinanceCategory(id, payload),
     onSuccess: () => {
       notifApi.success({ message: "Yangilandi" });
       resetForm();

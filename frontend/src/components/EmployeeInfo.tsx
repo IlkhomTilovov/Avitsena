@@ -21,7 +21,7 @@ import {
 import { useMutation, useQuery, useQueryClient } from "react-query";
 import {
   DeleteResponse,
-  OneMedAdmin,
+  AvitcenaAdmin,
   UpdateEmployeePayload,
 } from "../queries/query";
 import {
@@ -127,7 +127,7 @@ export default function EmployeeInfo() {
     Error
   >({
     queryKey: ["employee", id],
-    queryFn: () => OneMedAdmin.getEmployee(id!),
+    queryFn: () => AvitcenaAdmin.getEmployee(id!),
     staleTime: Infinity,
     cacheTime: Infinity,
   });
@@ -223,7 +223,7 @@ export default function EmployeeInfo() {
       EmployeeData,
       Error,
       { id: string; data: UpdateEmployeePayload }
-    >(({ id, data }) => OneMedAdmin.updateEmployee(id, data), {
+    >(({ id, data }) => AvitcenaAdmin.updateEmployee(id, data), {
       onSuccess: () => {
         queryClient.invalidateQueries(["employee", id]);
         openNotificationWithIcon(
@@ -247,7 +247,7 @@ export default function EmployeeInfo() {
     { success: boolean },
     Error,
     { id: string; data: { new_password: string } }
-  >(({ id, data }) => OneMedAdmin.updateNewPassword(id, data), {
+  >(({ id, data }) => AvitcenaAdmin.updateNewPassword(id, data), {
     onSuccess: () => {
       queryClient.invalidateQueries(["newPassword", id]);
       openNotificationWithIcon(
@@ -296,7 +296,7 @@ export default function EmployeeInfo() {
     refetch: serviceFetch,
   } = useQuery({
     queryKey: ["services", serPage], // <-- serPage qo‘shildi
-    queryFn: () => OneMedAdmin.getServices(serPage, 10),
+    queryFn: () => AvitcenaAdmin.getServices(serPage, 10),
     enabled: enable,
     keepPreviousData: true, // eski data yo‘qolmasin
   });
@@ -367,7 +367,7 @@ export default function EmployeeInfo() {
 
   const { mutate: deletePatientMutate, isLoading: deletePatientLoading } =
     useMutation<DeleteResponse, Error, string>(
-      (id) => OneMedAdmin.deleteEmployee(id),
+      (id) => AvitcenaAdmin.deleteEmployee(id),
       {
         onSuccess: (data) => {
           console.log("Xodim o‘chirildi:", data);

@@ -21,7 +21,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { useQuery } from "react-query";
-import { OneMedAdmin } from "../queries/query";
+import { AvitcenaAdmin } from "../queries/query";
 import "../App.css";
 import { Link } from "react-router-dom";
 import { getVisitStatusBadge, monthNamesFull, monthNamesShort } from "../utils/visitStatus";
@@ -47,21 +47,21 @@ export default function Dashboard() {
   const handleCancel = () => setIsModalOpen(false);
 
   const { data: allStatData, isLoading: allStatLoading } = useQuery({
-    queryFn: () => OneMedAdmin.allStat(),
+    queryFn: () => AvitcenaAdmin.allStat(),
     queryKey: ["allStat"],
     staleTime: Infinity,
     cacheTime: Infinity,
   });
 
   const { data: monthlyPatients } = useQuery({
-    queryFn: () => OneMedAdmin.lineChartData("monthly"),
+    queryFn: () => AvitcenaAdmin.lineChartData("monthly"),
     queryKey: ["lineChartData", "monthly"],
     staleTime: Infinity,
     cacheTime: Infinity,
   });
 
   const { data: yearlyPatients } = useQuery({
-    queryFn: () => OneMedAdmin.lineChartData("yearly"),
+    queryFn: () => AvitcenaAdmin.lineChartData("yearly"),
     queryKey: ["lineChartData", "yearly"],
     enabled: flowPeriod === "yearly",
     staleTime: Infinity,
@@ -69,21 +69,21 @@ export default function Dashboard() {
   });
 
   const { data: visitsMonthly } = useQuery({
-    queryFn: () => OneMedAdmin.barChartData(),
+    queryFn: () => AvitcenaAdmin.barChartData(),
     queryKey: ["barChartData"],
     staleTime: Infinity,
     cacheTime: Infinity,
   });
 
   const { data: revenueMonthly } = useQuery({
-    queryFn: () => OneMedAdmin.tringleData("monthly"),
+    queryFn: () => AvitcenaAdmin.tringleData("monthly"),
     queryKey: ["tringleData", "monthly"],
     staleTime: Infinity,
     cacheTime: Infinity,
   });
 
   const { data: todayVisits, isLoading: todayVisitsLoading } = useQuery({
-    queryFn: () => OneMedAdmin.getTodayVisits(1, 5),
+    queryFn: () => AvitcenaAdmin.getTodayVisits(1, 5),
     queryKey: ["todayVisits", "dashboard"],
     staleTime: 60_000,
   });

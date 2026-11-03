@@ -6,7 +6,7 @@ import { useMutation } from "react-query";
 import {
   ChangePasswordPayload,
   ChangePasswordResponse,
-  OneMedAdmin,
+  AvitcenaAdmin,
   UpdateUserProfilePayloadUpdate,
 } from "../queries/query";
 import { LoadingOutlined } from "@ant-design/icons";
@@ -53,7 +53,7 @@ export default function SettingDoctor() {
 
   const { mutate: updateProfile } = useMutation(
     (payload: UpdateUserProfilePayloadUpdate) =>
-      OneMedAdmin.updateUserProfile(payload),
+      AvitcenaAdmin.updateUserProfile(payload),
     {
       onSuccess: (res) => {
         console.log("Profil yangilandi ✅", res);
@@ -71,7 +71,7 @@ export default function SettingDoctor() {
     ChangePasswordResponse,
     unknown,
     ChangePasswordPayload
-  >((payload) => OneMedAdmin.changePassword(payload), {
+  >((payload) => AvitcenaAdmin.changePassword(payload), {
     onSuccess: (res) => {
       message.success(res.message || "Parol muvaffaqiyatli o‘zgartirildi ✅");
       passwordForm.resetFields();

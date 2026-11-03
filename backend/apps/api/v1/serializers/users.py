@@ -244,8 +244,14 @@ class UserProfileSerializer(serializers.ModelSerializer):
 
     doctor = DoctorDetailSerializer()
 
+    clinic_name = serializers.CharField(
+        source='clinic.name',
+        read_only=True,
+        allow_null=True
+    )
+
     class Meta:
-        
+
         model = CustomUser
         fields = (
             'id',
@@ -257,13 +263,14 @@ class UserProfileSerializer(serializers.ModelSerializer):
             'phone',
             'doctor',
             'status',
-            'more'
+            'more',
+            'clinic_name'
         )
         read_only_fields = (
             'status',
             'role'
         )
-    
+
     def get_refresh_token(self, instance) -> str:
          
         return str(RefreshToken.for_user(instance))

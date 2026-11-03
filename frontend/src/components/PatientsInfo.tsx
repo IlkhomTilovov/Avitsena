@@ -48,7 +48,7 @@ import "../App.css";
 import {
   DeleteResponse,
   DiagnosisResponse,
-  OneMedAdmin,
+  AvitcenaAdmin,
 } from "../queries/query";
 import { PatientRequest, PatientResponse } from "../pages/Registration";
 import { UploadOutlined } from "@ant-design/icons";
@@ -317,7 +317,7 @@ export default function PatientsInfo() {
 
   const { mutate: deletePatientMutate, isLoading: deletePatientLoading } =
     useMutation<DeleteResponse, Error, string>(
-      (id) => OneMedAdmin.deletePatient(id),
+      (id) => AvitcenaAdmin.deletePatient(id),
       {
         onSuccess: (data) => {
           console.log("Bemor o‘chirildi:", data);
@@ -351,7 +351,7 @@ export default function PatientsInfo() {
     error,
   } = useQuery<PatientSelectResponse, Error>({
     queryKey: ["patient", id],
-    queryFn: () => OneMedAdmin.selectPatient(id!),
+    queryFn: () => AvitcenaAdmin.selectPatient(id!),
     staleTime: Infinity, // data abadiy fresh
     cacheTime: Infinity,
   });
@@ -382,7 +382,7 @@ export default function PatientsInfo() {
   // Bemorni malumotlarini tahrirlash mutation
   const { mutate: updatePatientMutate, isLoading: updatePatientLoading } =
     useMutation<PatientResponse, Error, { id: string; obj: PatientRequest }>(
-      ({ id, obj }) => OneMedAdmin.updatePatient(id, obj),
+      ({ id, obj }) => AvitcenaAdmin.updatePatient(id, obj),
       {
         onSuccess: (data) => {
           queryClient.invalidateQueries();
@@ -424,7 +424,7 @@ export default function PatientsInfo() {
     Error
   >({
     queryKey: ["patientVisitesData", id, visitesPage, 10],
-    queryFn: () => OneMedAdmin.patientVisitesData(id!, visitesPage, 10),
+    queryFn: () => AvitcenaAdmin.patientVisitesData(id!, visitesPage, 10),
     enabled: false,
   });
 
@@ -437,7 +437,7 @@ export default function PatientsInfo() {
   // 3. Xodimlar (shifokorlar) ro‘yxati
   const { data: employeesData } = useQuery({
     queryKey: ["employees", 1, 20, "", "doctor"],
-    queryFn: () => OneMedAdmin.getEmployeesFilter(1, 20, "", "doctor"),
+    queryFn: () => AvitcenaAdmin.getEmployeesFilter(1, 20, "", "doctor"),
     keepPreviousData: true,
     enabled: isVisitOpen, // faqat modal ochilganda chaqiriladi
   });
@@ -452,7 +452,7 @@ export default function PatientsInfo() {
   // 4. Doktordan xizmatlar olish
   const { data: categories } = useQuery<Category[]>({
     queryKey: ["services", handleSelectDoctorState],
-    queryFn: () => OneMedAdmin.getServicesFromDoctor(handleSelectDoctorState),
+    queryFn: () => AvitcenaAdmin.getServicesFromDoctor(handleSelectDoctorState),
     enabled: !!handleSelectDoctorState,
     staleTime: Infinity,
     cacheTime: Infinity,
@@ -467,7 +467,7 @@ export default function PatientsInfo() {
     Error
   >({
     queryKey: ["patientAnalyses", id],
-    queryFn: () => OneMedAdmin.getPatientAnalyses(id!),
+    queryFn: () => AvitcenaAdmin.getPatientAnalyses(id!),
     enabled: !!id && activeHistoryTab === "analyses",
   });
 
@@ -476,7 +476,7 @@ export default function PatientsInfo() {
 
   const { mutate: addAnalysisMutate, isLoading: addAnalysisLoading } =
     useMutation<any, Error, { name: string; result?: string }>(
-      (obj) => OneMedAdmin.addPatientAnalysis(id!, obj),
+      (obj) => AvitcenaAdmin.addPatientAnalysis(id!, obj),
       {
         onSuccess: () => {
           queryClient.invalidateQueries(["patientAnalyses", id]);
@@ -520,7 +520,7 @@ export default function PatientsInfo() {
       Error,
       { allergies?: string; medications?: string; next_visit_date?: string | null }
     >(
-      (obj) => OneMedAdmin.updatePatientMedicalNotes(id!, obj),
+      (obj) => AvitcenaAdmin.updatePatientMedicalNotes(id!, obj),
       {
         onSuccess: () => {
           queryClient.invalidateQueries(["patient", id]);
@@ -565,7 +565,7 @@ export default function PatientsInfo() {
     VisitResponse, // success response
     Error, // error
     VisitPayload
-  >((obj) => OneMedAdmin.addNewVisit(id!, obj), {
+  >((obj) => AvitcenaAdmin.addNewVisit(id!, obj), {
     onSuccess: (data) => {
       console.log(data);
       queryClient.invalidateQueries(["patient", id]); // bemorni qayta chaqirish
@@ -613,7 +613,7 @@ export default function PatientsInfo() {
     DiagnosisResponse, // success response type
     Error, // error type
     { id: string; obj: any } // mutate fn param type
-  >(({ id, obj }) => OneMedAdmin.addDiagnosis(id, obj), {
+  >(({ id, obj }) => AvitcenaAdmin.addDiagnosis(id, obj), {
     onSuccess: () => {
       // Diagnos qo‘shilganda cache yangilash
       queryClient.invalidateQueries(["Recipes", id, visitId]);
@@ -627,7 +627,7 @@ export default function PatientsInfo() {
       queryKey: ["Recipes", id, visitId], // paramlarni key ichiga qo‘shamiz
       queryFn: ({ queryKey }) => {
         const [, id, vId] = queryKey as [string, string, string];
-        return OneMedAdmin.recipesList(id, vId);
+        return AvitcenaAdmin.recipesList(id, vId);
       },
       enabled: !!id && !!visitId, // faqat id va visitId bo‘lsa ishlaydi
     });
@@ -710,7 +710,7 @@ export default function PatientsInfo() {
     any,
     Error,
     { id: string; visitId: string; obj: { status: string } }
-  >(({ id, visitId, obj }) => OneMedAdmin.statusPatch(id, visitId, obj), {
+  >(({ id, visitId, obj }) => AvitcenaAdmin.statusPatch(id, visitId, obj), {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries(["Visit", variables.id, variables.visitId]);
       Modal.success({ content: "Holat yangilandi!" });
@@ -929,7 +929,7 @@ export default function PatientsInfo() {
   const [openPopap, setOpenPopap] = useState(false);
   const { mutateAsync: deleteVisit, isLoading: deleteVisitLoading } =
     useMutation<any, Error, { id: string; visitId: string }>(
-      ({ id, visitId }) => OneMedAdmin.deleteVisit(id, visitId),
+      ({ id, visitId }) => AvitcenaAdmin.deleteVisit(id, visitId),
       {
         onSuccess: () => {
           visitsFetch();

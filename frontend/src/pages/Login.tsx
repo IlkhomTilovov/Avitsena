@@ -1,7 +1,7 @@
 import { Form, Input, notification, Spin } from "antd";
 import Container from "../components/Container";
 import { useMutation, useQueryClient } from "react-query";
-import { OneMedAdmin } from "../queries/query";
+import { AvitcenaAdmin } from "../queries/query";
 import { useNavigate } from "react-router-dom";
 import { LoadingOutlined } from "@ant-design/icons";
 import { RuleObject } from "antd/es/form";
@@ -41,7 +41,7 @@ export default function Login() {
     AuthResponse,
     Error,
     AuthPayload
-  >((obj) => OneMedAdmin.authLogin(obj), {
+  >((obj) => AvitcenaAdmin.authLogin(obj), {
     onSuccess: (data) => {
       queryClient.invalidateQueries();
       console.log("Access olindi Loginniki. Data:", data);

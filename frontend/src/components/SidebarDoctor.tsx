@@ -55,7 +55,7 @@ export default function SidebarDoctor() {
                 </div>
               ),
               label: (
-                <img loading="lazy" src={logoText} alt="One Med" className="h-[24px]" />
+                <img loading="lazy" src={logoText} alt="Avitcena" className="h-[24px]" />
               ),
             },
           ]}

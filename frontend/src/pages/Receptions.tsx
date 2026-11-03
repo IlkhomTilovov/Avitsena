@@ -1,7 +1,7 @@
 import { DatePicker, Pagination, Spin } from "antd";
 import { useState } from "react";
 import { useQuery } from "react-query";
-import { OneMedAdmin } from "../queries/query";
+import { AvitcenaAdmin } from "../queries/query";
 import { LoadingOutlined } from "@ant-design/icons";
 import { BiUserCheck } from "react-icons/bi";
 import { BsTelephone } from "react-icons/bs";
@@ -27,7 +27,7 @@ export default function Receptions() {
   const { data, isLoading } = useQuery({
     queryKey: ["todayVisits", "receptions", page, per_page, date.format("YYYY-MM-DD"), status],
     queryFn: () =>
-      OneMedAdmin.getTodayVisits(page, per_page, date.format("YYYY-MM-DD"), status),
+      AvitcenaAdmin.getTodayVisits(page, per_page, date.format("YYYY-MM-DD"), status),
     keepPreviousData: true,
   });
 

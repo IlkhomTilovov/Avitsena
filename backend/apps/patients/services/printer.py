@@ -46,7 +46,7 @@ class XPrinterService:
 
                 
             # self.printer.set(align="center")
-            # self.printer.text('FIRMA NOMI: `ONE MED CLINC`')
+            # self.printer.text('FIRMA NOMI: `AVITCENA CLINIC`')
             self.printer.set(align="left")
             self.printer.text(text)
             self.printer.cut()

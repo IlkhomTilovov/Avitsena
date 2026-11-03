@@ -7,7 +7,7 @@ import {
 } from "react";
 import { useQuery } from "react-query";
 import { UserProfileResponse } from "../pages/Settings";
-import { OneMedAdmin } from "../queries/query";
+import { AvitcenaAdmin } from "../queries/query";
 import SecureStorage from "react-secure-storage";
 import { jwtDecode } from "jwt-decode";
 import { useLocation } from "react-router-dom";
@@ -89,7 +89,7 @@ export default function ContextApiProvider({
 
   const { data: getUserProfileData } = useQuery<UserProfileResponse>({
     queryKey: ["getUserProfile"],
-    queryFn: () => OneMedAdmin.getUserProfile(),
+    queryFn: () => AvitcenaAdmin.getUserProfile(),
     staleTime: 0, // 5 min
     cacheTime: 0, // 10 min
     enabled: !!isValid && location.pathname !== "/",

@@ -18,7 +18,7 @@ import { BsTelephone } from "react-icons/bs";
 import { FaUserDoctor } from "react-icons/fa6";
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "react-query";
-import { baseApi, OneMedAdmin } from "../queries/query";
+import { baseApi, AvitcenaAdmin } from "../queries/query";
 import { LoadingOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import "../App.css";
@@ -107,7 +107,7 @@ export default function Employees() {
 
   const { data: clinicStats } = useQuery({
     queryKey: ["allStat"],
-    queryFn: () => OneMedAdmin.allStat(),
+    queryFn: () => AvitcenaAdmin.allStat(),
     staleTime: Infinity,
   });
 
@@ -117,7 +117,7 @@ export default function Employees() {
   const { data: employeesData, isLoading } = useQuery({
     queryKey: ["employees", page, per_page, searchText, role, empStatus],
     queryFn: () =>
-      OneMedAdmin.getEmployeesFilter(page, per_page, searchText, role, empStatus),
+      AvitcenaAdmin.getEmployeesFilter(page, per_page, searchText, role, empStatus),
     keepPreviousData: true,
     refetchOnWindowFocus: false,
   });
@@ -148,7 +148,7 @@ export default function Employees() {
 
   const { data: servicesData, isFetching } = useQuery({
     queryKey: ["services", serPage], // <-- serPage qo‘shildi
-    queryFn: () => OneMedAdmin.getServices(serPage, 10),
+    queryFn: () => AvitcenaAdmin.getServices(serPage, 10),
     enabled: enable,
     keepPreviousData: true, // eski data yo‘qolmasin
     staleTime: Infinity,
@@ -211,7 +211,7 @@ export default function Employees() {
     EmployeeResponseType,
     Error,
     EmployeeObjType
-  >((obj) => OneMedAdmin.addEmployee(obj), {
+  >((obj) => AvitcenaAdmin.addEmployee(obj), {
     onSuccess: () => {
       queryClient.invalidateQueries(["employees"]); // faqat shu query refresh bo‘ladi
       openNotificationWithIcon(

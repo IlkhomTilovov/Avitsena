@@ -2,6 +2,7 @@
 import { forwardRef } from "react";
 import { Service } from "./EmployeeInfo";
 import dayjs from "dayjs";
+import { useCreateContext } from "../context/ContextApi";
 
 interface ReceiptData {
   patientName: string | undefined;
@@ -21,6 +22,7 @@ interface ReceiptProps {
 }
 
 const Receipt = forwardRef<HTMLDivElement, ReceiptProps>(({ data }, ref) => {
+  const { getUserProfileData } = useCreateContext();
   const formatted = dayjs(data.date).format("YYYY-MM-DD HH:mm");
   // console.log(data);
   return (
@@ -35,7 +37,7 @@ const Receipt = forwardRef<HTMLDivElement, ReceiptProps>(({ data }, ref) => {
       }}
     >
       <h2 style={{ textAlign: "start", fontSize: "14px", marginBottom: "8px" }}>
-        🧾 TITAN RENESANS MED CLINIC
+        🧾 {getUserProfileData?.data?.clinic_name}
       </h2>
       <hr style={{ borderTop: "1px dashed #000" }} />
 

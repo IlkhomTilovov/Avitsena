@@ -5,27 +5,12 @@ import { Dayjs } from "dayjs";
 import { EmployeeData, EmployeeResponse } from "../components/EmployeeInfo";
 import { UpdateProfilePayload, UserProfileResponse } from "../pages/Settings";
 
-// https://api.babyortomed.one-med.uz
-// https://api.bm.one-med.uz    /// ----- Andijondagi med klinika uchun
-// https://api.titan-renesans.one-med.uz     /// ---- titan renasans klinikasi uchun
-// https://api.nerolife.one-med.uz   /// 8083
-// https://api.murtazayev.one-med.uz   /// 8084
-
 // Apilar va versiyalar
-const baby = "https://api.babyortomed.one-med.info";
-const bm = "https://api.bm.one-med.info";
-const titan = "https://api.titan-renesans.one-med.info";
-const nero = "https://api.nerolife.one-med.info";
-const murtazayev = "https://api.murtazayev.one-med.info";
-const ideal = "https://api.ideal.one-med.info";
-const estelife = "https://api.estelife.one-med.info"; /// 8086
 const local = "http://127.0.0.1:8000"; // lokal backend (titan-renesans DB)
 
 // Build vaqtida VITE_BASE_API orqali beriladi (masalan production serverga deploy qilishda),
 // bo'lmasa lokal backendga tushadi.
 export const baseApi = import.meta.env.VITE_BASE_API || local;
-
-console.log(baby, bm, titan, nero, murtazayev, ideal, estelife);
 
 type ServiceItem = {
   id: string;
@@ -548,7 +533,7 @@ export interface SupportMessageItem {
   created_at: string;
 }
 
-export const OneMedAdmin = {
+export const AvitcenaAdmin = {
   authLogin: async (obj: { phone: string; password: string }) => {
     const response = await axios.post(`${baseApi}/v1/auth/login`, obj, {
       headers: {
@@ -1067,7 +1052,7 @@ export const OneMedAdmin = {
     return response.data;
   },
 
-  // OneMedAdmin ichida
+  // AvitcenaAdmin ichida
   statusPatch: async (
     id: string,
     visitId: string,

@@ -5,7 +5,7 @@ import { LoadingOutlined } from "@ant-design/icons";
 import { HiOutlineChatBubbleLeftRight } from "react-icons/hi2";
 import { FiCheckCircle, FiClock } from "react-icons/fi";
 import dayjs from "dayjs";
-import { OneMedAdmin, SupportMessageItem } from "../queries/query";
+import { AvitcenaAdmin, SupportMessageItem } from "../queries/query";
 import "../App.css";
 
 export default function SupportMessages() {
@@ -18,13 +18,13 @@ export default function SupportMessages() {
 
   const { data: clinicsData } = useQuery({
     queryKey: ["clinics", "support-filter"],
-    queryFn: () => OneMedAdmin.getClinics(1, 100),
+    queryFn: () => AvitcenaAdmin.getClinics(1, 100),
     staleTime: 5 * 60 * 1000,
   });
 
   const { data, isLoading } = useQuery({
     queryKey: ["supportMessages", page, per_page, clinicId],
-    queryFn: () => OneMedAdmin.getSupportMessages(page, per_page, clinicId),
+    queryFn: () => AvitcenaAdmin.getSupportMessages(page, per_page, clinicId),
     keepPreviousData: true,
   });
 
@@ -33,7 +33,7 @@ export default function SupportMessages() {
 
   const replyMutation = useMutation({
     mutationFn: ({ id, reply }: { id: string; reply: string }) =>
-      OneMedAdmin.replySupportMessage(id, reply),
+      AvitcenaAdmin.replySupportMessage(id, reply),
     onSuccess: (_res, variables) => {
       notifApi.success({ message: "Javob yuborildi" });
       setDrafts((prev) => ({ ...prev, [variables.id]: "" }));
