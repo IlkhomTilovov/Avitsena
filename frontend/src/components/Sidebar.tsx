@@ -25,7 +25,7 @@ type NavItem = {
 };
 
 export default function Sidebar() {
-  const { collapsed, setCollapsed } = useCreateContext();
+  const { collapsed, setCollapsed, getUserProfileData } = useCreateContext();
   const navigate = useNavigate();
   const location = useLocation();
   const [notifApi, contextHolder] = notification.useNotification();
@@ -99,7 +99,9 @@ export default function Sidebar() {
 
   const systemItems: NavItem[] = [
     { key: "services", path: "/services", icon: <TbCategoryPlus />, label: "Xizmatlar" },
-    { key: "moliya", path: "/moliya", icon: <LuWallet />, label: "Moliya" },
+    ...(getUserProfileData?.data?.can_view_finance
+      ? [{ key: "moliya", path: "/moliya", icon: <LuWallet />, label: "Moliya" }]
+      : []),
     { key: "settings", path: "/settings", icon: <IoSettingsOutline />, label: "Sozlamalar" },
   ];
 

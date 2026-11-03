@@ -23,7 +23,7 @@ from apps.finance.models import Expense, FinanceCategory
 from apps.patients.models import PatientVisit
 from apps.shared.choices import PaymentMethod, FinanceTransactionType, FinanceCategoryColor
 from apps.shared.pagination import CustomPagination
-from apps.shared.permissions import IsRegistratorOrAdmin
+from apps.shared.permissions import CanViewFinance
 from apps.shared.response import CustomResponse
 from apps.shared.utils import get_current_month_data
 
@@ -299,7 +299,7 @@ def _build_rows(income_qs, expense_qs, type_param):
 
 class FinanceSummaryView(APIView):
 
-    permission_classes = (IsRegistratorOrAdmin, )
+    permission_classes = (CanViewFinance, )
 
     @extend_schema(tags=['finance'], parameters=FINANCE_FILTER_PARAMETERS)
     def get(self, request):
@@ -379,7 +379,7 @@ class FinanceSummaryView(APIView):
 
 class FinanceTransactionsListView(APIView):
 
-    permission_classes = (IsRegistratorOrAdmin, )
+    permission_classes = (CanViewFinance, )
 
     @extend_schema(
         tags=['finance'],
@@ -445,7 +445,7 @@ class FinanceTransactionsListView(APIView):
 
 class FinanceExportView(APIView):
 
-    permission_classes = (IsRegistratorOrAdmin, )
+    permission_classes = (CanViewFinance, )
 
     @extend_schema(tags=['finance'], parameters=FINANCE_FILTER_PARAMETERS)
     def get(self, request):
@@ -491,7 +491,7 @@ class FinanceExportView(APIView):
 
 class FinanceCategoryListCreateView(APIView):
 
-    permission_classes = (IsRegistratorOrAdmin, )
+    permission_classes = (CanViewFinance, )
     serializer_class = FinanceCategorySerializer
 
     @extend_schema(
@@ -599,7 +599,7 @@ class FinanceCategoryListCreateView(APIView):
 
 class FinanceCategoryDetailView(APIView):
 
-    permission_classes = (IsRegistratorOrAdmin, )
+    permission_classes = (CanViewFinance, )
     serializer_class = FinanceCategorySerializer
 
     def get_object(self):
@@ -641,7 +641,7 @@ class FinanceCategoryDetailView(APIView):
 
 class ExpenseCreateView(APIView):
 
-    permission_classes = (IsRegistratorOrAdmin, )
+    permission_classes = (CanViewFinance, )
     serializer_class = ExpenseCreateSerializer
     pagination_class = CustomPagination
 
@@ -674,7 +674,7 @@ class ExpenseCreateView(APIView):
 
 class ExpenseDetailView(APIView):
 
-    permission_classes = (IsRegistratorOrAdmin, )
+    permission_classes = (CanViewFinance, )
     serializer_class = ExpenseSerializer
 
     def get_object(self):

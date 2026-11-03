@@ -12,6 +12,7 @@ import SuperAdminLayout from "./layout/SuperAdminLayout";
 import Clinics from "./pages/Clinics";
 import TokenRefresher from "./components/tokenRefresh";
 import PriviteRote from "./queries/PriviteRote";
+import FinanceRoute from "./queries/FinanceRoute";
 import Registration from "./pages/Registration";
 import PatientsInfo from "./components/PatientsInfo";
 import Settings from "./pages/Settings";
@@ -105,7 +106,9 @@ function App() {
             path="/moliya"
             element={
               <PriviteRote roles={["admin"]}>
-                <Moliya />
+                <FinanceRoute>
+                  <Moliya />
+                </FinanceRoute>
               </PriviteRote>
             }
           />
@@ -148,14 +151,6 @@ function App() {
             element={
               <PriviteRote roles={["registrator"]}>
                 <Settings />
-              </PriviteRote>
-            }
-          />
-          <Route
-            path="moliya"
-            element={
-              <PriviteRote roles={["registrator"]}>
-                <Moliya />
               </PriviteRote>
             }
           />

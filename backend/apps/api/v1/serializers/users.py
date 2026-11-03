@@ -264,11 +264,13 @@ class UserProfileSerializer(serializers.ModelSerializer):
             'doctor',
             'status',
             'more',
-            'clinic_name'
+            'clinic_name',
+            'can_view_finance'
         )
         read_only_fields = (
             'status',
-            'role'
+            'role',
+            'can_view_finance'
         )
 
     def get_refresh_token(self, instance) -> str:
