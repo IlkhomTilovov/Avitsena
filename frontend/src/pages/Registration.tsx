@@ -1440,26 +1440,6 @@ export default function Registration() {
                 )}
               </div>
             )}
-
-            <div className="flex flex-col gap-1 md:col-span-2 col-span-6">
-              <label className="text-sm">To'lov usuli</label>
-              <div
-                className={`h-[40px] flex items-center px-3 rounded-[8px] border text-[14px] font-[500] ${
-                  selectedPaymentMethod
-                    ? "border-[#0D9488] bg-[#E9FBF4] text-[#0D9488]"
-                    : "border-[#E0E6EB] text-[#8F99A3]"
-                }`}
-              >
-                {selectedPaymentMethod
-                  ? PAYMENT_METHODS.find((p) => p.value === selectedPaymentMethod)
-                      ?.label
-                  : "Ro'yxatdan o'tishda belgilanmagan"}
-              </div>
-              <span className="text-[11px] text-[#8F99A3]">
-                To'lov ro'yxatdan o'tish bosqichida qabul qilinadi, xodim bu yerda
-                qayta so'ramaydi
-              </span>
-            </div>
           </div>
           <div className="px-[24px] pb-4 flex gap-4 justify-end mt-3 md:mt-auto">
             <button

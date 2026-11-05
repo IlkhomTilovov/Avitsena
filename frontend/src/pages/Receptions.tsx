@@ -190,17 +190,6 @@ export default function Receptions() {
                   >
                     {badge.label}
                   </span>
-                  <span
-                    className={`px-2.5 py-1 rounded-[8px] text-[11px] font-[600] ${
-                      visit.payment_method_display
-                        ? "bg-[#E9FBF4] text-[#0D9488]"
-                        : "bg-[#FFF7E6] text-[#D48806]"
-                    }`}
-                  >
-                    {visit.payment_method_display
-                      ? `To'lov qabul qilindi (${visit.payment_method_display})`
-                      : "To'lov qabul qilinmagan"}
-                  </span>
                 </div>
               </Link>
             );
