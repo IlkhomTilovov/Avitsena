@@ -12,7 +12,7 @@ import dayjs, { Dayjs } from "dayjs";
 import { useMutation, useQuery, useQueryClient } from "react-query";
 import { AvitcenaAdmin } from "../queries/query";
 import { LoadingOutlined, CheckCircleFilled } from "@ant-design/icons";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { FiUpload, FiCamera } from "react-icons/fi";
 import {
   LuUser,
@@ -334,7 +334,7 @@ export default function Registration() {
     message: string
   ) => {
     api[type]({
-      message: "Notification Title",
+      message: type === "error" ? "Xatolik" : "Muvaffaqiyatli",
       description: message,
     });
   };
@@ -366,16 +366,24 @@ export default function Registration() {
     {
       onSuccess: () => {
         queryClient.invalidateQueries(["patient", obj]);
+        queryClient.invalidateQueries(["todayVisits"]);
+        queryClient.invalidateQueries(["allStat"]);
         setHandleSelectDoctorState("");
         form.resetFields();
         setSelectedPatientId(null);
         setSelectedServices([]);
         setSelectedPaymentMethod("");
         setIsFormDisabled(false);
-        openNotificationWithIcon("success", "Bemorga doctor biriktirildi");
+        openNotificationWithIcon(
+          "success",
+          "Bemor qabulga yozildi va Qabullar bo'limida ko'rinadi"
+        );
       },
-      onError: (error) => {
-        console.log(error);
+      onError: () => {
+        openNotificationWithIcon(
+          "error",
+          "Bemorni qabulga yozib bo'lmadi. Shifokor va xizmatni tekshirib, qayta urinib ko'ring"
+        );
       },
     }
   );
@@ -383,6 +391,7 @@ export default function Registration() {
   // Yangi bemor qo‘shish
   // Saqlab, darhol qabulga yozish uchun bayroq
   const [pendingVisitAfterSave, setPendingVisitAfterSave] = useState(false);
+  const doctorPanelRef = useRef<HTMLDivElement>(null);
 
   const { mutate: addPatientMutate, isLoading: addPatientLoading } =
     useMutation<PatientResponse, Error, PatientRequest>(
@@ -391,17 +400,22 @@ export default function Registration() {
         onSuccess: (data) => {
           queryClient.invalidateQueries();
 
-          if (pendingVisitAfterSave) {
-            setSelectedPatientId(data.data.id);
-            setIsFormDisabled(true);
-            setPendingVisitAfterSave(false);
-          } else {
-            form.resetFields();
-            setSelectedPatientId(null); // ✅ yangi ID saqlaymiz
-            setIsFormDisabled(false); // yangi bemorda forma tahrirlanadi
-            setSelectedPaymentMethod("");
-          }
-          openNotificationWithIcon("success", "Yangi bemor qo‘shildi");
+          // Bemor Qabullarga tushishi uchun shifokorga biriktirilishi kerak
+          setSelectedPatientId(data.data.id);
+          setIsFormDisabled(true);
+          setPendingVisitAfterSave(false);
+          setTimeout(
+            () =>
+              doctorPanelRef.current?.scrollIntoView({
+                behavior: "smooth",
+                block: "center",
+              }),
+            100
+          );
+          openNotificationWithIcon(
+            "success",
+            "Yangi bemor qo‘shildi. Qabulga yozish uchun shifokor va xizmatni tanlang"
+          );
         },
         onError: (err) => {
           setPendingVisitAfterSave(false);
@@ -584,6 +598,16 @@ export default function Registration() {
       return;
     }
 
+    if (!handleSelectDoctorState) {
+      openNotificationWithIcon("error", "Shifokorni tanlang");
+      return;
+    }
+
+    if (selectedServices.length === 0) {
+      openNotificationWithIcon("error", "Kamida bitta xizmatni tanlang");
+      return;
+    }
+
     addNewVisitMutate(selectedPatientId);
   };
 
@@ -598,8 +622,6 @@ export default function Registration() {
     queryKey: ["employees", 1, 20, "", "doctor"],
     queryFn: () => AvitcenaAdmin.getEmployeesFilter(1, 20, "", "doctor"),
     keepPreviousData: true,
-    staleTime: Infinity,
-    cacheTime: Infinity,
   });
 
   // 4. Doktordan xizmatlar olish
@@ -607,8 +629,6 @@ export default function Registration() {
     queryKey: ["services", handleSelectDoctorState],
     queryFn: () => AvitcenaAdmin.getServicesFromDoctor(handleSelectDoctorState),
     enabled: !!handleSelectDoctorState,
-    staleTime: Infinity,
-    cacheTime: Infinity,
   });
 
   // Select uchun shifokor options
@@ -1369,7 +1389,10 @@ export default function Registration() {
       {/* Servise qo'shsih */}
 
       {selectedPatientId ? (
-        <div className=" border md:w-full w-full border-[#e3e3e3] rounded-[20px] px-[24px] py-[10px] mt-4 mb-5">
+        <div
+          ref={doctorPanelRef}
+          className=" border md:w-full w-full border-[#e3e3e3] rounded-[20px] px-[24px] py-[10px] mt-4 mb-5"
+        >
           <h3 className="md:text-[18px] text-[14px] font-[600] mt-4">
             Bemorni shifokorga biriktirish
           </h3>
@@ -1380,8 +1403,15 @@ export default function Registration() {
                 className="w-full !h-[40px]"
                 onChange={(val) => setHandleSelectDoctorState(val)}
                 options={employeeOptions}
+                placeholder="Shifokorni tanlang"
                 // value={selectedDoctor}
               />
+              {employeesData && employeeOptions.length === 0 && (
+                <span className="text-[12px] text-[#D4443F]">
+                  Klinikada shifokor yo'q. Avval Xodimlar bo'limida shifokor
+                  qo'shing
+                </span>
+              )}
             </div>
 
             {handleSelectDoctorState && (
@@ -1392,7 +1422,7 @@ export default function Registration() {
                   style={{ width: "100%" }}
                   className="!min-h-[40px]"
                   multiple
-                  placeholder="Please select"
+                  placeholder="Xizmatni tanlang"
                   allowClear
                   treeCheckable
                   treeDefaultExpandAll
@@ -1401,6 +1431,12 @@ export default function Registration() {
                   value={selectedServices}
                   onChange={(val) => setSelectedServices(val)}
                 />
+                {categories && treeData2.length === 0 && (
+                  <span className="text-[12px] text-[#D4443F]">
+                    Bu shifokorga xizmat biriktirilmagan. Uni Xodimlar bo'limida
+                    biriktiring
+                  </span>
+                )}
               </div>
             )}
 

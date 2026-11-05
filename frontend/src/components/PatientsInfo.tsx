@@ -454,8 +454,6 @@ export default function PatientsInfo() {
     queryKey: ["services", handleSelectDoctorState],
     queryFn: () => AvitcenaAdmin.getServicesFromDoctor(handleSelectDoctorState),
     enabled: !!handleSelectDoctorState,
-    staleTime: Infinity,
-    cacheTime: Infinity,
   });
 
   // 5. Tibbiy tarix tablari (Tashriflar / Tashxislar / Tahlillar / Retseptlar / To'lovlar)
@@ -569,6 +567,8 @@ export default function PatientsInfo() {
     onSuccess: (data) => {
       console.log(data);
       queryClient.invalidateQueries(["patient", id]); // bemorni qayta chaqirish
+      queryClient.invalidateQueries(["todayVisits"]);
+      queryClient.invalidateQueries(["allStat"]);
       visitsFetch();
       openNotificationWithIcon(
         "success",
@@ -591,8 +591,12 @@ export default function PatientsInfo() {
       setReceiptDataBool(true);
       setIsVisitOpen(false); // modal yopish
     },
-    onError: (error) => {
-      console.log(error);
+    onError: () => {
+      openNotificationWithIcon(
+        "error",
+        "Tashrifni qo'shib bo'lmadi",
+        "Shifokor va xizmatni tekshirib, qayta urinib ko'ring"
+      );
     },
   });
 

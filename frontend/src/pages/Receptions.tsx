@@ -77,7 +77,37 @@ export default function Receptions() {
         <div className="mt-[14px]">
           {(data?.data ?? []).length === 0 && (
             <div className="px-6 py-10 border border-[#E0E6EB] rounded-[10px] bg-white text-center text-[#8F99A3]">
-              Bu sanada qabullar topilmadi
+              {status ? (
+                <>
+                  <p>
+                    Bu sanada "
+                    {STATUS_OPTIONS.find((opt) => opt.value === status)?.label}"
+                    holatidagi qabullar yo'q
+                  </p>
+                  <button
+                    onClick={() => {
+                      setStatus("");
+                      setPage(1);
+                    }}
+                    className="mt-3 px-4 py-2 rounded-[6px] bg-[#0D9488] text-white text-[14px] cursor-pointer"
+                  >
+                    Barcha qabullarni ko'rsatish
+                  </button>
+                </>
+              ) : (
+                <>
+                  <p>Bu sanada qabullar topilmadi</p>
+                  <p className="text-[13px] mt-1">
+                    Bemor shifokorga biriktirilgach shu yerda ko'rinadi
+                  </p>
+                  <Link
+                    to="/registration"
+                    className="inline-block mt-3 px-4 py-2 rounded-[6px] bg-[#0D9488] !text-white text-[14px]"
+                  >
+                    Bemorni qabulga yozish
+                  </Link>
+                </>
+              )}
             </div>
           )}
 
