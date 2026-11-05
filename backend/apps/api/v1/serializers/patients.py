@@ -505,6 +505,8 @@ class PatientVisitListSerializer(serializers.ModelSerializer):
 
     services = ServiceSerializer(many=True)
 
+    recipes = VisitRecipeserializer(many=True, read_only=True)
+
     class Meta:
 
         model = PatientVisit
@@ -514,6 +516,7 @@ class PatientVisitListSerializer(serializers.ModelSerializer):
             'room_number',
             'total_price',
             'diagnosis',
+            'recipes',
             'queue',
             'status',
             'file',

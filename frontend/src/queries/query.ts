@@ -786,12 +786,14 @@ export const AvitcenaAdmin = {
   patientVisitesData: async (
     id: string,
     page?: number,
-    per_page?: number
+    per_page?: number,
+    has?: "diagnosis" | "recipes"
   ): Promise<VisitsResponse> => {
     const response = await api.get(`${baseApi}/v1/patients/${id}/visits`, {
       params: {
         page: page || undefined,
         per_page: per_page || undefined,
+        has: has || undefined,
       },
       headers: {
         "Content-Type": "application/json",
@@ -1084,7 +1086,7 @@ export const AvitcenaAdmin = {
   statusPatch: async (
     id: string,
     visitId: string,
-    obj: { status: string }
+    obj: { status?: string; diagnosis?: string }
   ): Promise<any> => {
     const response = await api.patch(
       `${baseApi}/v1/patients/${id}/visits/${visitId}`,
@@ -1133,6 +1135,7 @@ export const AvitcenaAdmin = {
 
   getPatientAnalyses: async (id: string): Promise<any> => {
     const response = await api.get(`${baseApi}/v1/patients/${id}/analyses`, {
+      params: { per_page: 100 },
       headers: {
         "Content-Type": "application/json",
       },

@@ -47,7 +47,6 @@ import { GoTrash } from "react-icons/go";
 import "../App.css";
 import {
   DeleteResponse,
-  DiagnosisResponse,
   AvitcenaAdmin,
 } from "../queries/query";
 import { PatientRequest, PatientResponse } from "../pages/Registration";
@@ -153,6 +152,8 @@ type Visit = {
   services: Service[];
   total_price: number;
   diagnosis: string | null;
+  recipes?: Recipe[];
+  file?: string | null;
   created_at: string;
   status: "pending" | "completed" | "cancelled" | string;
   payment_method?: "cash" | "card" | "click_payme" | "transfer" | null;
@@ -222,6 +223,7 @@ export interface RecipesResponse {
   message: string;
   data: {
     recipes: Recipe[];
+    diagnosis: string | null;
     file: string;
     created_at: string;
     services: Service[];
@@ -418,21 +420,34 @@ export default function PatientsInfo() {
   };
 
   // 2. Bemor tashriflari
+  // Tibbiy tarix tablari (Tashriflar / Tashxislar / Tahlillar / Retseptlar / To'lovlar)
+  type HistoryTab = "visits" | "diagnoses" | "analyses" | "recipes" | "payments";
+  const [activeHistoryTab, setActiveHistoryTab] = useState<HistoryTab>("visits");
+
+  const visitsFilter =
+    activeHistoryTab === "diagnoses"
+      ? "diagnosis"
+      : activeHistoryTab === "recipes"
+      ? "recipes"
+      : undefined;
+
   const [visitesPage, setvisitespage] = useState(1);
-  const { data: patientVisitesData, refetch: visitsFetch } = useQuery<
+  const { data: patientVisitesData, isLoading: patientVisitesLoading } = useQuery<
     VisitsResponse,
     Error
   >({
-    queryKey: ["patientVisitesData", id, visitesPage, 10],
-    queryFn: () => AvitcenaAdmin.patientVisitesData(id!, visitesPage, 10),
-    enabled: false,
+    queryKey: ["patientVisitesData", id, visitesPage, 10, visitsFilter],
+    queryFn: () =>
+      AvitcenaAdmin.patientVisitesData(id!, visitesPage, 10, visitsFilter),
+    enabled: !!id,
   });
 
-  useEffect(() => {
-    if (id) {
-      visitsFetch();
-    }
-  }, [id, visitesPage]);
+  // Tarix ro'yxatlari va tablardagi sonlarni yangilaydi
+  const refreshHistory = () => {
+    queryClient.invalidateQueries(["patientVisitesData", id]);
+    queryClient.invalidateQueries(["patientAnalyses", id]);
+    queryClient.invalidateQueries(["patient", id]);
+  };
 
   // 3. Xodimlar (shifokorlar) ro‘yxati
   const { data: employeesData } = useQuery({
@@ -456,18 +471,32 @@ export default function PatientsInfo() {
     enabled: !!handleSelectDoctorState,
   });
 
-  // 5. Tibbiy tarix tablari (Tashriflar / Tashxislar / Tahlillar / Retseptlar / To'lovlar)
-  type HistoryTab = "visits" | "diagnoses" | "analyses" | "recipes" | "payments";
-  const [activeHistoryTab, setActiveHistoryTab] = useState<HistoryTab>("visits");
-
   const { data: analysesData, isLoading: analysesLoading } = useQuery<
     AnalysesResponse,
     Error
   >({
     queryKey: ["patientAnalyses", id],
     queryFn: () => AvitcenaAdmin.getPatientAnalyses(id!),
-    enabled: !!id && activeHistoryTab === "analyses",
+    enabled: !!id,
   });
+
+  // Tashrifga bog'lanmagan tahlillar "Tashriflar" tabida alohida ko'rinadi
+  const unlinkedAnalyses = (analysesData?.data || []).filter((a) => !a.visit);
+
+  const renderAnalysisCard = (a: Analysis) => (
+    <div
+      key={a.id}
+      className="border border-[#c9c9c9] rounded-[10px] border-l-[4px] border-l-[#0D9488] px-6 py-4 mb-4"
+    >
+      <div className="flex items-center justify-between">
+        <h4 className="md:text-[17px] text-[13px] font-[500]">{a.name}</h4>
+        <span className="md:text-[14px] text-[10px] text-[#676767]">
+          {dayjs(a.created_at).format("YYYY-MM-DD HH:mm")}
+        </span>
+      </div>
+      {a.result && <p className="text-[13px] text-[#676767] mt-2">{a.result}</p>}
+    </div>
+  );
 
   const [analysisModalOpen, setAnalysisModalOpen] = useState(false);
   const [analysisForm] = Form.useForm();
@@ -477,7 +506,7 @@ export default function PatientsInfo() {
       (obj) => AvitcenaAdmin.addPatientAnalysis(id!, obj),
       {
         onSuccess: () => {
-          queryClient.invalidateQueries(["patientAnalyses", id]);
+          refreshHistory();
           openNotificationWithIcon(
             "success",
             "Tahlil qo'shildi",
@@ -566,10 +595,9 @@ export default function PatientsInfo() {
   >((obj) => AvitcenaAdmin.addNewVisit(id!, obj), {
     onSuccess: (data) => {
       console.log(data);
-      queryClient.invalidateQueries(["patient", id]); // bemorni qayta chaqirish
+      refreshHistory();
       queryClient.invalidateQueries(["todayVisits"]);
       queryClient.invalidateQueries(["allStat"]);
-      visitsFetch();
       openNotificationWithIcon(
         "success",
         "Bemorga tashrif qo'shildi",
@@ -614,15 +642,42 @@ export default function PatientsInfo() {
   const [diagnosModal, setDiagnosModal] = useState(false);
 
   const { mutate: diagnosMuatate, isLoading: diagnosLoading } = useMutation<
-    DiagnosisResponse, // success response type
-    Error, // error type
-    { id: string; obj: any } // mutate fn param type
-  >(({ id, obj }) => AvitcenaAdmin.addDiagnosis(id, obj), {
-    onSuccess: () => {
-      // Diagnos qo‘shilganda cache yangilash
-      queryClient.invalidateQueries(["Recipes", id, visitId]);
+    void,
+    Error,
+    { diagnosis: string; recipes: { name: string; description?: string }[] }
+  >(
+    async ({ diagnosis, recipes }) => {
+      if (diagnosis !== (visitRecipes?.data?.diagnosis ?? "")) {
+        await AvitcenaAdmin.statusPatch(id!, visitId, { diagnosis });
+      }
+
+      if (recipes.length > 0) {
+        await AvitcenaAdmin.addDiagnosis(visitId, { recipes });
+      }
     },
-  });
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries(["Recipes", id, visitId]);
+        refreshHistory();
+        setDiagnosModal(false);
+        openNotificationWithIcon(
+          "success",
+          "Saqlandi",
+          "Tashxis va retseptlar tarixga qo'shildi!"
+        );
+      },
+      onError: () => {
+        // Bir qismi saqlangan bo'lishi mumkin
+        queryClient.invalidateQueries(["Recipes", id, visitId]);
+        refreshHistory();
+        openNotificationWithIcon(
+          "error",
+          "Saqlab bo'lmadi",
+          "Iltimos, qaytadan urinib ko'ring!"
+        );
+      },
+    }
+  );
 
   const [visitId, setVisitId] = useState("");
 
@@ -669,8 +724,8 @@ export default function PatientsInfo() {
 
   const sendDiagnos = (values: any) => {
     diagnosMuatate({
-      id: visitId,
-      obj: values,
+      diagnosis: (values.diagnosis || "").trim(),
+      recipes: values.recipes || [],
     });
   };
 
@@ -719,7 +774,7 @@ export default function PatientsInfo() {
       queryClient.invalidateQueries(["Visit", variables.id, variables.visitId]);
       Modal.success({ content: "Holat yangilandi!" });
       Modal.destroyAll();
-      visitsFetch();
+      refreshHistory();
       setDiagnosModal(false);
     },
     onError: () => {
@@ -936,7 +991,7 @@ export default function PatientsInfo() {
       ({ id, visitId }) => AvitcenaAdmin.deleteVisit(id, visitId),
       {
         onSuccess: () => {
-          visitsFetch();
+          refreshHistory();
           setDiagnosModal(false);
           setOpenPopap(false);
           setVisitId("");
@@ -1265,7 +1320,10 @@ export default function PatientsInfo() {
               ).map((tab) => (
                 <button
                   key={tab.key}
-                  onClick={() => setActiveHistoryTab(tab.key)}
+                  onClick={() => {
+                    setActiveHistoryTab(tab.key);
+                    setvisitespage(1);
+                  }}
                   className={`px-3 py-2 text-[13px] font-[500] border-b-2 -mb-[1px] cursor-pointer transition-colors ${
                     activeHistoryTab === tab.key
                       ? "border-[#0D9488] text-[#0D9488]"
@@ -1356,26 +1414,7 @@ export default function PatientsInfo() {
                 ) : !analysesData?.data?.length ? (
                   <Empty description="Hali tahlillar yo'q" />
                 ) : (
-                  analysesData.data.map((a) => (
-                    <div
-                      key={a.id}
-                      className="border border-[#c9c9c9] rounded-[10px] border-l-[4px] border-l-[#0D9488] px-6 py-4 mb-4"
-                    >
-                      <div className="flex items-center justify-between">
-                        <h4 className="md:text-[17px] text-[13px] font-[500]">
-                          {a.name}
-                        </h4>
-                        <span className="md:text-[14px] text-[10px] text-[#676767]">
-                          {dayjs(a.created_at).format("YYYY-MM-DD HH:mm")}
-                        </span>
-                      </div>
-                      {a.result && (
-                        <p className="text-[13px] text-[#676767] mt-2">
-                          {a.result}
-                        </p>
-                      )}
-                    </div>
-                  ))
+                  analysesData.data.map(renderAnalysisCard)
                 ))}
 
               {/* Modal  yangi tashrif*/}
@@ -1695,11 +1734,39 @@ export default function PatientsInfo() {
                   </div>
                 ) : (
                   <Form
+                    key={`${visitId}-${visitRecipes?.data?.diagnosis ?? ""}`}
                     name="dynamic_form_nest_item"
                     onFinish={sendDiagnos}
                     layout="vertical"
                     autoComplete="off"
+                    initialValues={{
+                      diagnosis: visitRecipes?.data?.diagnosis ?? "",
+                    }}
                   >
+                    {/* Tashxis */}
+                    {currentPath === "doctor" ? (
+                      <Form.Item
+                        name="diagnosis"
+                        label="Tashxis"
+                        className="!mt-4"
+                      >
+                        <Input.TextArea
+                          rows={3}
+                          placeholder="Bemorning tashxisini yozing"
+                        />
+                      </Form.Item>
+                    ) : (
+                      <div className="my-4">
+                        <h3 className="text-[16px] font-semibold mb-2">
+                          🩺 Tashxis
+                        </h3>
+                        <p className="text-[14px] text-[#676767] whitespace-pre-wrap">
+                          {visitRecipes?.data?.diagnosis ||
+                            "Shifokor hali tashxis yozmagan"}
+                        </p>
+                      </div>
+                    )}
+
                     {/* Avval mavjud retseptlar */}
                     {(visitRecipes?.data?.recipes?.length ?? 0) > 0 ? (
                       <div className="mb-6">
@@ -1730,7 +1797,7 @@ export default function PatientsInfo() {
                         </div>
                       </div>
                     ) : (
-                      <Empty />
+                      <Empty description="Hali retsept yozilmagan" />
                     )}
 
                     {currentPath !== "doctor" && visitRecipes?.data?.file && (
@@ -1903,23 +1970,13 @@ export default function PatientsInfo() {
                   </Form>
                 )}
               </Modal>
-              {/* Retseptlar tabi uchun eslatma */}
-              {activeHistoryTab === "recipes" &&
-                (!patientVisitesData?.data?.length ? (
-                  <Empty description="Hali tashriflar yo'q" />
-                ) : (
-                  <p className="text-[13px] text-[#8F99A3] mb-3">
-                    Retseptni ko'rish uchun quyidagi tashriflardan birini
-                    tanlang.
-                  </p>
-                ))}
-
-              {/* Tashriflar / Tashxislar / To'lovlar ro‘yxati */}
-              {(activeHistoryTab === "visits" ||
-                activeHistoryTab === "diagnoses" ||
-                activeHistoryTab === "payments" ||
-                activeHistoryTab === "recipes") &&
-                (!patientVisitesData?.data?.length ? (
+              {/* Tashriflar / Tashxislar / Retseptlar / To'lovlar ro‘yxati */}
+              {activeHistoryTab !== "analyses" &&
+                (patientVisitesLoading ? (
+                  <div className="flex justify-center items-center py-10">
+                    <Spin indicator={<LoadingOutlined spin />} size="large" />
+                  </div>
+                ) : !patientVisitesData?.data?.length ? (
                   activeHistoryTab === "visits" ? (
                     <div className="flex flex-col items-center text-center py-10">
                       <div className="w-[64px] h-[64px] rounded-full bg-[#E9FBF4] flex items-center justify-center text-[#0D9488] text-[28px] mb-3">
@@ -1953,16 +2010,23 @@ export default function PatientsInfo() {
                       )}
                     </div>
                   ) : (
-                    <Empty />
+                    <Empty
+                      description={
+                        activeHistoryTab === "diagnoses"
+                          ? "Hali tashxis yo'q. Uni shifokor tashrif oynasida yozadi"
+                          : activeHistoryTab === "recipes"
+                          ? "Hali retsept yo'q. Uni shifokor tashrif oynasida yozadi"
+                          : "Hali to'lovlar yo'q"
+                      }
+                    />
                   )
                 ) : (
                   patientVisitesData?.data
-                    ?.filter((item) =>
-                      activeHistoryTab === "diagnoses"
-                        ? item.diagnosis !== null
-                        : true
-                    )
-                    .map((item) => {
+                    ?.map((item) => {
+                      const visitAnalyses = (analysesData?.data || []).filter(
+                        (a) => a.visit === item.id
+                      );
+
                       const formatted = dayjs(item.created_at).format(
                         "YYYY-MM-DD HH:mm"
                       );
@@ -2025,12 +2089,62 @@ export default function PatientsInfo() {
                                   </span>
                                 ))}
                               </li>
-                              {item.diagnosis !== null && (
+                              {item.diagnosis && (
+                                <li className="flex items-start md:text-[14px] text-[12px] gap-2 text-[#676767]">
+                                  <span className="font-[400] text-[#000]">
+                                    Tashxis:
+                                  </span>
+                                  <span className="whitespace-pre-wrap">
+                                    {item.diagnosis}
+                                  </span>
+                                </li>
+                              )}
+                              {(item.recipes?.length ?? 0) > 0 && (
+                                <li className="flex items-start md:text-[14px] text-[12px] gap-2 text-[#676767]">
+                                  <span className="font-[400] text-[#000]">
+                                    Retsept:
+                                  </span>
+                                  <span className="flex flex-col gap-0.5">
+                                    {item.recipes?.map((r) => (
+                                      <span key={r.id}>
+                                        {r.name}
+                                        {r.description
+                                          ? ` — ${r.description}`
+                                          : ""}
+                                      </span>
+                                    ))}
+                                  </span>
+                                </li>
+                              )}
+                              {visitAnalyses.length > 0 && (
+                                <li className="flex items-start md:text-[14px] text-[12px] gap-2 text-[#676767]">
+                                  <span className="font-[400] text-[#000]">
+                                    Tahlil:
+                                  </span>
+                                  <span className="flex flex-col gap-0.5">
+                                    {visitAnalyses.map((a) => (
+                                      <span key={a.id}>
+                                        {a.name}
+                                        {a.result ? ` — ${a.result}` : ""}
+                                      </span>
+                                    ))}
+                                  </span>
+                                </li>
+                              )}
+                              {item.file && (
                                 <li className="flex items-center md:text-[14px] text-[12px] gap-2 text-[#676767]">
                                   <span className="font-[400] text-[#000]">
-                                    Tashhis:
+                                    Fayl:
                                   </span>
-                                  {item.diagnosis}
+                                  <a
+                                    href={item.file}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    onClick={(e) => e.stopPropagation()}
+                                    className="text-blue-500"
+                                  >
+                                    {item.file.split("/").pop()}
+                                  </a>
                                 </li>
                               )}
                               <li className="flex items-center md:text-[14px] text-[12px] gap-2 text-[#676767]">
@@ -2056,6 +2170,16 @@ export default function PatientsInfo() {
                       );
                     })
                 ))}
+              {/* Tashrifga bog'lanmagan tahlillar */}
+              {activeHistoryTab === "visits" && unlinkedAnalyses.length > 0 && (
+                <div className="mt-2">
+                  <h4 className="font-[500] text-[14px] md:text-[16px] mb-3">
+                    Tahlillar
+                  </h4>
+                  {unlinkedAnalyses.map(renderAnalysisCard)}
+                </div>
+              )}
+
               {/* Pagination */}
               {activeHistoryTab !== "analyses" &&
                 patientVisitesData?.meta?.total_items &&

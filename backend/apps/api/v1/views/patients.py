@@ -457,11 +457,15 @@ class PatientVisitListCreateView(APIView):
 
     def get_queryset(self):
 
-        return Patient.objects \
-            .filter(
-                status=StatusTextChoices.ACTIVE,
-                clinic=self.request.user.clinic
-            )
+        queryset = Patient.objects \
+            .filter(clinic=self.request.user.clinic)
+
+        # An inactive patient takes no new visits, but keeps their history
+        if self.request.method == 'POST':
+
+            queryset = queryset.filter(status=StatusTextChoices.ACTIVE)
+
+        return queryset
 
     def get_object(self):
 
@@ -532,6 +536,12 @@ class PatientVisitListCreateView(APIView):
                 description='Page item count',
                 location=OpenApiParameter.QUERY,
                 type=OpenApiTypes.INT
+            ),
+            OpenApiParameter(
+                name='has',
+                description='diagnosis | recipes: only visits that have one',
+                location=OpenApiParameter.QUERY,
+                type=OpenApiTypes.STR
             )
         ],
         responses={
@@ -547,11 +557,23 @@ class PatientVisitListCreateView(APIView):
         queryset = PatientVisit.objects \
             .filter(patient=patient) \
             .select_related('doctor') \
-            .prefetch_related('services')
-        
+            .prefetch_related('services', 'recipes')
+
         if user.role == UserRole.DOCTOR:
 
             queryset = queryset.filter(doctor=user)
+
+        has = request.query_params.get('has')
+
+        if has == 'diagnosis':
+
+            queryset = queryset \
+                .exclude(diagnosis__isnull=True) \
+                .exclude(diagnosis='')
+
+        elif has == 'recipes':
+
+            queryset = queryset.filter(recipes__isnull=False).distinct()
 
         paginator = self.pagination_class()
 
