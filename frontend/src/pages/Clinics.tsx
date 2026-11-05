@@ -11,7 +11,10 @@ import {
 } from "antd";
 import { HiOutlineBuildingOffice2 } from "react-icons/hi2";
 import { BsTelephone } from "react-icons/bs";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
+import { LuSearch } from "react-icons/lu";
+import { useDebouncedValue } from "../utils/useDebouncedValue";
 import { useMutation, useQuery, useQueryClient } from "react-query";
 import { AvitcenaAdmin } from "../queries/query";
 import { LoadingOutlined } from "@ant-design/icons";
@@ -51,6 +54,20 @@ export default function Clinics() {
   const [page, setPage] = useState(1);
   const per_page = 10;
 
+  const [searchParams] = useSearchParams();
+  const [searchInput, setSearchInput] = useState("");
+  const search = useDebouncedValue(searchInput.trim());
+
+  // Tepadagi umumiy qidiruvdan klinika tanlanganda keladi
+  useEffect(() => {
+    const fromUrl = searchParams.get("search");
+
+    if (fromUrl !== null) {
+      setSearchInput(fromUrl);
+      setPage(1);
+    }
+  }, [searchParams]);
+
   type NotificationType = "success" | "info" | "warning" | "error";
 
   const [api, contextHolder] = notification.useNotification();
@@ -67,8 +84,8 @@ export default function Clinics() {
   };
 
   const { data: clinicsData, isLoading } = useQuery({
-    queryKey: ["clinics", page, per_page],
-    queryFn: () => AvitcenaAdmin.getClinics(page, per_page),
+    queryKey: ["clinics", page, per_page, search],
+    queryFn: () => AvitcenaAdmin.getClinics(page, per_page, search),
     keepPreviousData: true,
     refetchOnWindowFocus: false,
   });
@@ -155,7 +172,26 @@ export default function Clinics() {
         </button>
       </div>
 
+      <Input
+        value={searchInput}
+        onChange={(e) => {
+          setSearchInput(e.target.value);
+          setPage(1);
+        }}
+        allowClear
+        aria-label="Klinikalarni qidirish"
+        prefix={<LuSearch className="text-[#A9B2B8] mr-1" />}
+        placeholder="Klinika nomi bo'yicha qidiring..."
+        className="md:!w-[320px] !h-[40px] !mt-[14px]"
+      />
+
       <div className="mt-[14px]">
+        {clinicsData?.data?.length === 0 && (
+          <div className="px-6 py-10 border border-[#E0E6EB] rounded-[10px] bg-white text-center text-[#8F99A3]">
+            {search ? `"${search}" bo'yicha klinika topilmadi` : "Hali klinika yo'q"}
+          </div>
+        )}
+
         {clinicsData?.data?.map((item: ClinicResponseType) => (
           <div
             key={item.id}

@@ -972,7 +972,9 @@ export const AvitcenaAdmin = {
     page?: number,
     per_page?: number,
     date?: string,
-    status?: string
+    status?: string,
+    search?: string,
+    allDates?: boolean
   ) => {
     const response = await api.get(`${baseApi}/v1/visits/today`, {
       params: {
@@ -980,6 +982,8 @@ export const AvitcenaAdmin = {
         per_page: per_page || undefined,
         date: date || undefined,
         status: status || undefined,
+        search: search || undefined,
+        all_dates: allDates || undefined,
       },
       headers: {
         "Content-Type": "application/json",

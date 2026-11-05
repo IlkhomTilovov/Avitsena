@@ -1434,6 +1434,7 @@ export default function PatientsInfo() {
                     >
                       <TreeSelect
                         showSearch
+                        treeNodeFilterProp="title"
                         style={{ width: "100%" }}
                         multiple
                         allowClear

@@ -1,5 +1,6 @@
 import { AutoComplete, DatePicker, Dropdown, Empty, Form, Input, Pagination, Select, Spin } from "antd";
 import { Link, useNavigate } from "react-router-dom";
+import SecureStorage from "react-secure-storage";
 import { BsTelephone, BsThreeDotsVertical } from "react-icons/bs";
 import { LuSearch, LuUsers, LuActivity, LuUserX, LuUserPlus } from "react-icons/lu";
 import { FiDownload, FiUpload, FiPlus, FiEye } from "react-icons/fi";
@@ -79,6 +80,7 @@ function getStatusBadge(item: PatientSearchItem) {
 
 export default function Patients() {
   const navigate = useNavigate();
+  const isDoctor = SecureStorage.getItem("role") === "doctor";
   const [page, setPage] = useState(1);
   const per_page = 10;
   const [searchText, setSearchText] = useState("");
@@ -111,6 +113,7 @@ export default function Patients() {
   const { data: doctorsData } = useQuery({
     queryKey: ["doctors-for-filter"],
     queryFn: () => AvitcenaAdmin.getEmployeesFilter(1, 100, undefined, "doctor"),
+    enabled: !isDoctor, // shifokor faqat o'z bemorlarini ko'radi
   });
 
   const stats = statsData?.data;
@@ -365,7 +368,7 @@ export default function Patients() {
           </Form>
 
           <div className="flex items-center gap-2 justify-between md:justify-end w-full md:w-auto">
-            {["", "active", "nonactive"].map((r) => (
+            {["", "active", "inactive"].map((r) => (
               <button
                 key={r}
                 onClick={() => {
@@ -384,23 +387,27 @@ export default function Patients() {
         </div>
 
         <div className="flex flex-col md:flex-row items-center gap-3">
-          <Select
-            value={doctorId}
-            onChange={(v) => {
-              setDoctorId(v);
-              setPage(1);
-            }}
-            options={doctorOptions}
-            placeholder="Barcha shifokorlar"
-            allowClear
-            className="!w-full md:!w-[220px] !h-[40px]"
-          />
+          {!isDoctor && (
+            <Select
+              value={doctorId}
+              onChange={(v) => {
+                setDoctorId(v);
+                setSelectedPatient(null);
+                setPage(1);
+              }}
+              options={doctorOptions}
+              placeholder="Barcha shifokorlar"
+              allowClear
+              className="!w-full md:!w-[220px] !h-[40px]"
+            />
+          )}
 
           <DatePicker
             picker="month"
             value={month}
             onChange={(v) => {
               setMonth(v);
+              setSelectedPatient(null);
               setPage(1);
             }}
             placeholder="Oy bo'yicha"

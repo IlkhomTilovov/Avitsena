@@ -637,6 +637,7 @@ export default function EmployeeInfo() {
                     // onClick={takeServicesFromBack}
                     disabled={!editMode}
                     showSearch
+                    treeNodeFilterProp="title"
                     style={{ width: "100%" }}
                     multiple
                     placeholder="Please select"

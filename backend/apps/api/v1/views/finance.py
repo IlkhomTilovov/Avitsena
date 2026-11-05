@@ -231,12 +231,25 @@ def _get_finance_querysets(clinic, request):
 
     if search:
 
-        income_qs = income_qs.filter(
-            Q(patient__first_name__icontains=search) |
-            Q(patient__last_name__icontains=search) |
-            Q(patient__middle_name__icontains=search) |
-            Q(queue__icontains=search)
-        )
+        income_query = Q()
+
+        for search_term in search.split():
+
+            term_query = (
+                Q(patient__first_name__icontains=search_term) |
+                Q(patient__last_name__icontains=search_term) |
+                Q(patient__middle_name__icontains=search_term) |
+                Q(queue__icontains=search_term)
+            )
+
+            # The receipt reference shown in the table: see _visit_reference
+            if search_term.upper().startswith('AV-'):
+
+                term_query |= Q(id__istartswith=search_term[3:])
+
+            income_query &= term_query
+
+        income_qs = income_qs.filter(income_query)
 
         expense_qs = expense_qs.filter(title__icontains=search)
 

@@ -133,6 +133,7 @@ export default function Employees() {
   const handleSearch = (val: string) => {
     setSearchText(val);
     setSelectedEmployee(null);
+    setPage(1);
   };
 
   const handleSelect = (_val: string, option: any) => {
@@ -182,7 +183,7 @@ export default function Employees() {
             disabled: category.services.length === 0,
             children: category.services.map((srv) => ({
               value: `${srv.id}`,
-              title: <div>{srv.name}</div>,
+              title: srv.name,
             })),
           })),
         ];
@@ -366,7 +367,11 @@ export default function Employees() {
           {["", "doctor", "registrator", "admin"].map((r) => (
             <button
               key={r}
-              onClick={() => setRole(r)}
+              onClick={() => {
+                setRole(r);
+                setSelectedEmployee(null);
+                setPage(1);
+              }}
               className={`px-3 py-2 border border-[#eaeaea] rounded-[6px] ${
                 role === r ? "bg-[#0D9488] text-white border-[#0D9488]" : "text-black"
               } cursor-pointer text-[14px] md:h-[41px] hover:shadow-md transition-all duration-150`}
@@ -383,7 +388,11 @@ export default function Employees() {
         </div>
         <Select
           value={empStatus || undefined}
-          onChange={(v) => setEmpStatus(v || "")}
+          onChange={(v) => {
+            setEmpStatus(v || "");
+            setSelectedEmployee(null);
+            setPage(1);
+          }}
           placeholder="Barcha holatlar"
           allowClear
           className="!w-full md:!w-[170px] !h-[40px]"
@@ -715,6 +724,7 @@ export default function Employees() {
                     <TreeSelect
                       onClick={takeServicesFromBack}
                       showSearch
+                      treeNodeFilterProp="title"
                       style={{ width: "100%" }}
                       multiple
                       placeholder="Please select"

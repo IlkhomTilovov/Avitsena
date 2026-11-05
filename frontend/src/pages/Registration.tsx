@@ -1419,6 +1419,7 @@ export default function Registration() {
                 <label className="text-sm ">Servislar</label>
                 <TreeSelect
                   showSearch
+                  treeNodeFilterProp="title"
                   style={{ width: "100%" }}
                   className="!min-h-[40px]"
                   multiple

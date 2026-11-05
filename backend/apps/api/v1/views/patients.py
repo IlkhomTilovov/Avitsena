@@ -23,6 +23,15 @@ from django.db.models import Q, OuterRef, Subquery, DateField, CharField, Count,
 from django.db.models.functions import Cast
 from django.utils import timezone
 from datetime import datetime
+import re
+
+
+def _patient_code_query(search_term):
+
+    # Matches the code shown to users, e.g. AV-0012 or 12
+    match = re.fullmatch(r'(?:AV-)?(\d+)', search_term, re.IGNORECASE)
+
+    return Q(number=int(match.group(1))) if match else Q()
 
 
 class PatientListCreateView(APIView):
@@ -130,6 +139,7 @@ class PatientListCreateView(APIView):
 
                 query &= (
                     Q(id__icontains=search_term) |
+                    _patient_code_query(search_term) |
                     Q(first_name__icontains=search_term) |
                     Q(last_name__icontains=search_term) |
                     Q(middle_name__icontains=search_term) |
@@ -829,6 +839,8 @@ class TodayVisitsView(APIView):
 
         status_param = query_params.get('status')
 
+        search = query_params.get('search')
+
         try:
 
             target_date = (
@@ -840,13 +852,16 @@ class TodayVisitsView(APIView):
 
             target_date = timezone.now().date()
 
+        all_dates = query_params.get('all_dates') == 'true'
+
         queryset = PatientVisit.objects \
-            .filter(
-                patient__clinic=user.clinic,
-                created_at__date=target_date
-            ) \
+            .filter(patient__clinic=user.clinic) \
             .select_related('patient', 'doctor', 'doctor__doctor') \
             .prefetch_related('services', 'doctor__doctor__services__category')
+
+        if not all_dates:
+
+            queryset = queryset.filter(created_at__date=target_date)
 
         if user.role == UserRole.DOCTOR:
 
@@ -856,7 +871,24 @@ class TodayVisitsView(APIView):
 
             queryset = queryset.filter(status=status_param)
 
-        return queryset.order_by('created_at')
+        if search:
+
+            query = Q()
+
+            for search_term in search.split():
+
+                query &= (
+                    Q(patient__first_name__icontains=search_term) |
+                    Q(patient__last_name__icontains=search_term) |
+                    Q(patient__middle_name__icontains=search_term) |
+                    Q(patient__phone__icontains=search_term) |
+                    Q(doctor__fio__icontains=search_term) |
+                    Q(queue__icontains=search_term)
+                )
+
+            queryset = queryset.filter(query)
+
+        return queryset.order_by('-created_at' if all_dates else 'created_at')
 
     @extend_schema(
         tags=['patients'],
@@ -872,6 +904,18 @@ class TodayVisitsView(APIView):
                 description='Visit status',
                 location=OpenApiParameter.QUERY,
                 type=OpenApiTypes.STR
+            ),
+            OpenApiParameter(
+                name='search',
+                description='Search by patient, phone, doctor or queue',
+                location=OpenApiParameter.QUERY,
+                type=OpenApiTypes.STR
+            ),
+            OpenApiParameter(
+                name='all_dates',
+                description='true: ignore date and return visits from every day, newest first',
+                location=OpenApiParameter.QUERY,
+                type=OpenApiTypes.BOOL
             ),
             OpenApiParameter(
                 name='page',

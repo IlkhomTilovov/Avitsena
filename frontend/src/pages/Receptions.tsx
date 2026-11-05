@@ -1,4 +1,4 @@
-import { DatePicker, Pagination, Spin } from "antd";
+import { DatePicker, Input, Pagination, Spin } from "antd";
 import { useState } from "react";
 import { useQuery } from "react-query";
 import { AvitcenaAdmin } from "../queries/query";
@@ -7,7 +7,9 @@ import { BiUserCheck } from "react-icons/bi";
 import { BsTelephone } from "react-icons/bs";
 import { Link } from "react-router-dom";
 import dayjs, { Dayjs } from "dayjs";
+import { LuSearch } from "react-icons/lu";
 import { getVisitStatusBadge } from "../utils/visitStatus";
+import { useDebouncedValue } from "../utils/useDebouncedValue";
 import "../App.css";
 
 const STATUS_OPTIONS = [
@@ -22,12 +24,14 @@ export default function Receptions() {
   const [page, setPage] = useState(1);
   const [status, setStatus] = useState("");
   const [date, setDate] = useState<Dayjs>(dayjs());
+  const [searchInput, setSearchInput] = useState("");
+  const search = useDebouncedValue(searchInput.trim());
   const per_page = 12;
 
   const { data, isLoading } = useQuery({
-    queryKey: ["todayVisits", "receptions", page, per_page, date.format("YYYY-MM-DD"), status],
+    queryKey: ["todayVisits", "receptions", page, per_page, date.format("YYYY-MM-DD"), status, search],
     queryFn: () =>
-      AvitcenaAdmin.getTodayVisits(page, per_page, date.format("YYYY-MM-DD"), status),
+      AvitcenaAdmin.getTodayVisits(page, per_page, date.format("YYYY-MM-DD"), status, search, !!search),
     keepPreviousData: true,
   });
 
@@ -40,19 +44,39 @@ export default function Receptions() {
         <div>
           <h1 className="md:text-[22px] text-[18px] font-[600]">Qabullar</h1>
           <p className="text-[14px] md:text-[16px] text-[#8F99A3]">
-            {isToday ? "Bugungi" : date.format("DD-MMMM")} navbat ro'yxati
+            {search
+              ? "Barcha kunlardagi qabullardan qidirilmoqda"
+              : `${isToday ? "Bugungi" : date.format("DD-MMMM")} navbat ro'yxati`}
           </p>
         </div>
         <DatePicker
           value={date}
-          onChange={(value) => value && setDate(value)}
+          onChange={(value) => {
+            if (value) {
+              setDate(value);
+              setPage(1);
+            }
+          }}
           allowClear={false}
+          disabled={!!search}
           className="!h-[41px]"
         />
       </div>
 
       {/* Filters */}
       <div className="px-6 py-4 border border-[#E0E6EB] rounded-[10px] flex items-center gap-2 mt-4 flex-wrap">
+        <Input
+          value={searchInput}
+          onChange={(e) => {
+            setSearchInput(e.target.value);
+            setPage(1);
+          }}
+          allowClear
+          aria-label="Qabullarni qidirish"
+          prefix={<LuSearch className="text-[#A9B2B8] mr-1" />}
+          placeholder="Bemor, telefon, shifokor yoki navbat..."
+          className="md:!w-[320px] !h-[38px]"
+        />
         {STATUS_OPTIONS.map((opt) => (
           <button
             key={opt.value}
@@ -77,16 +101,19 @@ export default function Receptions() {
         <div className="mt-[14px]">
           {(data?.data ?? []).length === 0 && (
             <div className="px-6 py-10 border border-[#E0E6EB] rounded-[10px] bg-white text-center text-[#8F99A3]">
-              {status ? (
+              {status || search ? (
                 <>
                   <p>
-                    Bu sanada "
-                    {STATUS_OPTIONS.find((opt) => opt.value === status)?.label}"
-                    holatidagi qabullar yo'q
+                    {search
+                      ? `"${search}" bo'yicha qabul topilmadi`
+                      : `Bu sanada "${
+                          STATUS_OPTIONS.find((opt) => opt.value === status)?.label
+                        }" holatidagi qabullar yo'q`}
                   </p>
                   <button
                     onClick={() => {
                       setStatus("");
+                      setSearchInput("");
                       setPage(1);
                     }}
                     className="mt-3 px-4 py-2 rounded-[6px] bg-[#0D9488] text-white text-[14px] cursor-pointer"
@@ -126,6 +153,11 @@ export default function Receptions() {
               >
                 <div className="flex items-center gap-3">
                   <div className="w-[55px] shrink-0 text-[14px] font-[600] text-[#44525C]">
+                    {search && (
+                      <span className="block text-[11px] font-[500] text-[#8F99A3]">
+                        {dayjs(visit.created_at).format("DD.MM.YY")}
+                      </span>
+                    )}
                     {time}
                   </div>
                   <div className="md:w-[50px] md:h-[50px] w-[35px] h-[35px] flex justify-center items-center rounded-full bg-[#E7F0FA] text-[#2A81D8] md:text-[24px] text-[20px]">

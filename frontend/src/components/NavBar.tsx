@@ -4,6 +4,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { useCreateContext } from "../context/ContextApi";
 import { useEffect, useState } from "react";
 import SecureStorage from "react-secure-storage";
+import GlobalSearch from "./GlobalSearch";
 
 const weekDays = [
   "Yakshanba",
@@ -105,16 +106,7 @@ export default function NavBar() {
       </div>
 
       <div className="flex-1 hidden md:flex justify-center max-w-[420px] mx-auto">
-        <div className="relative w-full">
-          <input
-            type="text"
-            placeholder="Bemor, shifokor yoki qabulni qidiring..."
-            className="w-full h-[40px] rounded-[10px] border border-[#E0E6EB] bg-[#F9FAFB] pl-4 pr-14 text-[13px] outline-none focus:border-[#0D9488] transition-colors"
-          />
-          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] text-[#A9B2B8] border border-[#E0E6EB] rounded-[4px] px-1.5 py-0.5">
-            Ctrl K
-          </span>
-        </div>
+        <GlobalSearch />
       </div>
 
       <div className="flex items-center gap-3 shrink-0">
