@@ -73,6 +73,20 @@ class ServiceCategoryDetailSerializer(serializers.ModelSerializer):
             'price_max'
         )
 
+    def validate_name(self, value):
+
+        # clinic is not a serializer field, so DRF cannot check the unique constraint
+        is_exists = ServiceCategory.objects \
+            .filter(clinic_id=self.instance.clinic_id, name=value) \
+            .exclude(id=self.instance.id) \
+            .exists()
+
+        if is_exists:
+
+            raise serializers.ValidationError('Category with this name already exists.')
+
+        return value
+
     def get_service_count(self, instance) -> int:
 
         return len(instance.services.all())

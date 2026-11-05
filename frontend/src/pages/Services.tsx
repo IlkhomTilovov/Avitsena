@@ -13,7 +13,15 @@ import {
 import { LoadingOutlined } from "@ant-design/icons";
 import { useMutation, useQuery, useQueryClient } from "react-query";
 import { AvitcenaAdmin } from "../queries/query";
-import { FiDownload, FiPlus, FiSearch, FiEdit2, FiTrash2 } from "react-icons/fi";
+import {
+  FiCheck,
+  FiDownload,
+  FiEdit2,
+  FiPlus,
+  FiSearch,
+  FiTrash2,
+  FiX,
+} from "react-icons/fi";
 import {
   TbCategoryPlus,
   TbStethoscope,
@@ -155,6 +163,7 @@ export default function Services() {
     queryClient.invalidateQueries(["getCategorylist"]);
     queryClient.invalidateQueries(["getCategory", selectedCategoryId]);
     queryClient.invalidateQueries(["servicesStats"]);
+    queryClient.invalidateQueries(["services"]);
   };
 
   // Yangi kategoriya qo'shish
@@ -191,9 +200,41 @@ export default function Services() {
         onSuccess: () => {
           setCategoryEditMode(false);
           refreshAll();
+          openNotificationWithIcon(
+            "success",
+            "Saqlandi",
+            "Kategoriya nomi o'zgartirildi!"
+          );
+        },
+        onError: () => {
+          openNotificationWithIcon(
+            "error",
+            "Saqlab bo'lmadi",
+            "Bu nomli kategoriya allaqachon mavjud bo'lishi mumkin."
+          );
         },
       }
     );
+
+  const saveCategoryName = (category: { id: string; name: string }) => {
+    const name = categoryEditName.trim();
+
+    if (!name) {
+      openNotificationWithIcon(
+        "error",
+        "Saqlab bo'lmadi",
+        "Kategoriya nomini kiriting."
+      );
+      return;
+    }
+
+    if (name === category.name) {
+      setCategoryEditMode(false);
+      return;
+    }
+
+    updateCategoryMutate({ id: category.id, name });
+  };
 
   // Kategoriyani o'chirish
   const { mutate: deleteCategoryMutate } = useMutation(
@@ -268,15 +309,24 @@ export default function Services() {
       (data: { id: string; obj: any }) =>
         AvitcenaAdmin.editService(data.id, data.obj),
       {
-        onSuccess: () => {
+        onSuccess: (_data, variables) => {
           setEditingService(null);
           refreshAll();
+
+          // Faol/nofaol tugmasi uchun xabar chiqarmaymiz
+          if (variables.obj.name) {
+            openNotificationWithIcon(
+              "success",
+              "Saqlandi",
+              "Xizmat ma'lumotlari o'zgartirildi!"
+            );
+          }
         },
         onError: () => {
           openNotificationWithIcon(
             "error",
-            "Xatolik yuz berdi",
-            "Xizmatni yangilab bo'lmadi."
+            "Saqlab bo'lmadi",
+            "Bu nomli xizmat shu kategoriyada allaqachon mavjud bo'lishi mumkin."
           );
         },
       }
@@ -594,6 +644,12 @@ export default function Services() {
                             size="small"
                             value={categoryEditName}
                             onChange={(e) => setCategoryEditName(e.target.value)}
+                            onPressEnter={() => saveCategoryName(categoryDetail)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Escape") setCategoryEditMode(false);
+                            }}
+                            autoFocus
+                            aria-label="Kategoriya nomi"
                             className="!w-[200px]"
                           />
                         ) : (
@@ -620,29 +676,38 @@ export default function Services() {
 
                   <div className="flex items-center gap-2 shrink-0">
                     {categoryEditMode ? (
-                      <button
-                        onClick={() => {
-                          if (categoryEditName.trim()) {
-                            updateCategoryMutate({
-                              id: categoryDetail.id,
-                              name: categoryEditName.trim(),
-                            });
-                          }
-                        }}
-                        className="w-[32px] h-[32px] flex items-center justify-center rounded-[8px] bg-[#0D9488] text-white cursor-pointer"
-                      >
-                        {updateCategoryLoading ? (
-                          <Spin indicator={<LoadingOutlined spin />} />
-                        ) : (
-                          <FiEdit2 />
-                        )}
-                      </button>
+                      <>
+                        <button
+                          onClick={() => saveCategoryName(categoryDetail)}
+                          disabled={updateCategoryLoading}
+                          title="Saqlash"
+                          aria-label="Kategoriya nomini saqlash"
+                          className="flex items-center gap-1.5 px-3 h-[32px] rounded-[8px] bg-[#0D9488] text-white text-[12px] font-[500] cursor-pointer disabled:opacity-70"
+                        >
+                          {updateCategoryLoading ? (
+                            <Spin indicator={<LoadingOutlined spin />} />
+                          ) : (
+                            <FiCheck />
+                          )}
+                          Saqlash
+                        </button>
+                        <button
+                          onClick={() => setCategoryEditMode(false)}
+                          title="Bekor qilish"
+                          aria-label="Tahrirlashni bekor qilish"
+                          className="w-[32px] h-[32px] flex items-center justify-center rounded-[8px] border border-[#E0E6EB] text-[#44525C] hover:bg-[#F9FAFB] cursor-pointer"
+                        >
+                          <FiX />
+                        </button>
+                      </>
                     ) : (
                       <button
                         onClick={() => {
                           setCategoryEditName(categoryDetail.name);
                           setCategoryEditMode(true);
                         }}
+                        title="Nomini tahrirlash"
+                        aria-label="Kategoriya nomini tahrirlash"
                         className="w-[32px] h-[32px] flex items-center justify-center rounded-[8px] border border-[#E0E6EB] text-[#44525C] hover:bg-[#F9FAFB] cursor-pointer"
                       >
                         <FiEdit2 />
@@ -736,6 +801,8 @@ export default function Services() {
                               <div className="flex items-center gap-1">
                                 <button
                                   onClick={() => setEditingService(s)}
+                                  title="Xizmatni tahrirlash"
+                                  aria-label={`${s.name} xizmatini tahrirlash`}
                                   className="w-[28px] h-[28px] flex items-center justify-center rounded-[6px] text-[#44525C] hover:bg-[#F9FAFB] cursor-pointer"
                                 >
                                   <FiEdit2 className="text-[13px]" />
@@ -867,7 +934,7 @@ export default function Services() {
             editServiceMutate({
               id: editingService.id,
               obj: {
-                name: values.name,
+                name: values.name.trim(),
                 category: categoryDetail?.id,
                 price: Number(values.price),
                 duration_minutes: values.duration_minutes
@@ -880,7 +947,13 @@ export default function Services() {
           <Form.Item
             name="name"
             label="Xizmat nomi"
-            rules={[{ required: true, message: "Xizmat nomini kiriting!" }]}
+            rules={[
+              {
+                required: true,
+                whitespace: true,
+                message: "Xizmat nomini kiriting!",
+              },
+            ]}
           >
             <Input />
           </Form.Item>
