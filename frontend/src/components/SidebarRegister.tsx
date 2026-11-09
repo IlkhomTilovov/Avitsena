@@ -7,7 +7,7 @@ import { useCreateContext } from "../context/ContextApi";
 import { useLocation, useNavigate } from "react-router-dom";
 import { IoSettingsOutline } from "react-icons/io5";
 import { PiUserListBold } from "react-icons/pi";
-import { LuBedDouble } from "react-icons/lu";
+import { LuBedDouble, LuWarehouse } from "react-icons/lu";
 import logo from "../../public/images/logo.svg";
 import logoText from "../../public/images/logo-text.svg";
 import "../App.css";
@@ -27,6 +27,7 @@ export default function SidebarRegister() {
     { key: "registration", icon: <RiApps2AddLine />, label: "Ro'yhatga olish" },
     { key: "patients", icon: <PiUserListBold />, label: "Bemorlar ro'yhati" },
     { key: "statsionar", icon: <LuBedDouble />, label: "Statsionar" },
+    { key: "ombor", icon: <LuWarehouse />, label: "Ombor" },
     { key: "settings", icon: <IoSettingsOutline />, label: "Sozlamalar " },
   ];
 

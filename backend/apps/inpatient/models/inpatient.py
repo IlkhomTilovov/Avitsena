@@ -3,7 +3,7 @@ from django.db.models import Q
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 from apps.shared.models import AbstractBaseModel
-from apps.shared.choices import AdmissionStatus
+from apps.shared.choices import AdmissionStatus, RoomType
 
 
 class Room(AbstractBaseModel):
@@ -16,6 +16,12 @@ class Room(AbstractBaseModel):
 
     name = models.CharField(
         max_length=100
+    )
+
+    room_type = models.CharField(
+        max_length=10,
+        choices=RoomType.choices,
+        default=RoomType.STANDARD
     )
 
     daily_price = models.PositiveIntegerField(

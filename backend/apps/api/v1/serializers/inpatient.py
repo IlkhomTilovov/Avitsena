@@ -56,6 +56,7 @@ class RoomSerializer(serializers.ModelSerializer):
         fields = (
             'id',
             'name',
+            'room_type',
             'daily_price',
             'is_active',
             'beds'
@@ -77,6 +78,7 @@ class RoomWriteSerializer(serializers.ModelSerializer):
         model = Room
         fields = (
             'name',
+            'room_type',
             'daily_price',
             'is_active',
             'bed_count'
@@ -301,6 +303,8 @@ class AdmissionListSerializer(serializers.ModelSerializer):
 
     room = serializers.CharField(source='bed.room.name', read_only=True)
 
+    room_type = serializers.CharField(source='bed.room.room_type', read_only=True)
+
     bed = serializers.CharField(source='bed.name', read_only=True)
 
     doctor = serializers.CharField(source='doctor.fio', read_only=True, default=None)
@@ -316,6 +320,7 @@ class AdmissionListSerializer(serializers.ModelSerializer):
             'id',
             'patient',
             'room',
+            'room_type',
             'bed',
             'doctor',
             'status',

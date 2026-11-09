@@ -29,12 +29,33 @@ import {
   AdmissionListItem,
   AvitcenaAdmin,
   InpatientRoom,
+  RoomType,
 } from "../queries/query";
 import { useDebouncedValue } from "../utils/useDebouncedValue";
 import { apiErrorMessage } from "../utils/apiError";
 import "../App.css";
 
 type Tab = "active" | "rooms" | "discharged";
+
+const ROOM_TYPES: { value: RoomType; label: string }[] = [
+  { value: "standard", label: "Standart" },
+  { value: "vip", label: "VIP" },
+];
+
+const roomTypeLabel = (type: RoomType) =>
+  ROOM_TYPES.find((t) => t.value === type)?.label ?? type;
+
+function RoomTypeBadge({ type }: { type: RoomType }) {
+  return (
+    <span
+      className={`inline-block px-2 py-0.5 rounded-full text-[11px] font-[600] align-middle ${
+        type === "vip" ? "bg-[#FFF4E0] text-[#B26A00]" : "bg-[#EEF6FD] text-[#2A81D8]"
+      }`}
+    >
+      {roomTypeLabel(type)}
+    </span>
+  );
+}
 
 function money(n: number | undefined | null) {
   return `${Math.round(n || 0).toLocaleString("uz-UZ")} so'm`;
@@ -92,7 +113,7 @@ function AdmitModal({
   const freeBedOptions = rooms
     .filter((room) => room.is_active)
     .map((room) => ({
-      label: `${room.name} xona — ${money(room.daily_price)}/kun`,
+      label: `${room.name} xona (${roomTypeLabel(room.room_type)}) — ${money(room.daily_price)}/kun`,
       options: room.beds
         .filter((bed) => bed.is_active && !bed.occupant)
         .map((bed) => ({
@@ -302,7 +323,7 @@ function AdmissionDrawer({
   const transferOptions = rooms
     .filter((room) => room.is_active)
     .map((room) => ({
-      label: `${room.name} xona`,
+      label: `${room.name} xona (${roomTypeLabel(room.room_type)})`,
       options: room.beds
         .filter((bed) => bed.is_active && !bed.occupant)
         .map((bed) => ({ value: bed.id, label: `${room.name} xona, ${bed.name}-karavot` })),
@@ -413,7 +434,8 @@ function AdmissionDrawer({
               </span>
             </Info>
             <Info label="Xona va karavot">
-              {admission.room} xona, {admission.bed}-karavot
+              {admission.room} xona, {admission.bed}-karavot{" "}
+              <RoomTypeBadge type={admission.room_type} />
             </Info>
             <Info label="Davolovchi shifokor">{admission.doctor || "Belgilanmagan"}</Info>
             <Info label="Yotqizgan xodim">{admission.created_by || "—"}</Info>
@@ -683,8 +705,13 @@ function RoomModal({
       form.resetFields();
       form.setFieldsValue(
         room
-          ? { name: room.name, daily_price: room.daily_price, is_active: room.is_active }
-          : { bed_count: 2, daily_price: 0, is_active: true }
+          ? {
+              name: room.name,
+              room_type: room.room_type,
+              daily_price: room.daily_price,
+              is_active: room.is_active,
+            }
+          : { room_type: "standard", bed_count: 2, daily_price: 0, is_active: true }
       );
     }
   }, [open, room]);
@@ -694,11 +721,13 @@ function RoomModal({
       room
         ? AvitcenaAdmin.updateRoom(room.id, {
             name: values.name,
+            room_type: values.room_type,
             daily_price: values.daily_price,
             is_active: values.is_active,
           })
         : AvitcenaAdmin.createRoom({
             name: values.name,
+            room_type: values.room_type,
             daily_price: values.daily_price,
             bed_count: values.bed_count,
           }),
@@ -722,6 +751,13 @@ function RoomModal({
           rules={[{ required: true, whitespace: true, message: "Xona nomini kiriting" }]}
         >
           <Input placeholder="Masalan: 101 yoki VIP-1" />
+        </Form.Item>
+        <Form.Item
+          name="room_type"
+          label="Xona turi"
+          rules={[{ required: true, message: "Xona turini tanlang" }]}
+        >
+          <Select aria-label="Xona turi" options={ROOM_TYPES} />
         </Form.Item>
         <Form.Item
           name="daily_price"
@@ -768,6 +804,7 @@ export default function Statsionar() {
     notifApi[type]({ message, description });
 
   const [tab, setTab] = useState<Tab>("active");
+  const [roomTypeFilter, setRoomTypeFilter] = useState<RoomType | "">("");
   const [searchInput, setSearchInput] = useState("");
   const search = useDebouncedValue(searchInput.trim());
   const [page, setPage] = useState(1);
@@ -787,6 +824,9 @@ export default function Statsionar() {
   });
 
   const rooms = roomsData?.data || [];
+  const shownRooms = roomTypeFilter
+    ? rooms.filter((room) => room.room_type === roomTypeFilter)
+    : rooms;
 
   const { data: admissionsData, isLoading: admissionsLoading } = useQuery({
     queryKey: ["admissions", tab, search, page],
@@ -902,18 +942,33 @@ export default function Statsionar() {
 
       {tab === "rooms" ? (
         <div>
-          {isAdmin && (
-            <button
-              onClick={() => setRoomModal({ open: true, room: null })}
-              className="flex items-center gap-1.5 mb-4 px-3.5 h-[36px] rounded-[8px] border border-[#0D9488] text-[#0D9488] text-[13px] cursor-pointer"
-            >
-              <FiPlus /> Xona qo'shish
-            </button>
-          )}
+          <div className="flex flex-wrap items-center gap-2 mb-4">
+            {isAdmin && (
+              <button
+                onClick={() => setRoomModal({ open: true, room: null })}
+                className="flex items-center gap-1.5 px-3.5 h-[36px] rounded-[8px] border border-[#0D9488] text-[#0D9488] text-[13px] cursor-pointer"
+              >
+                <FiPlus /> Xona qo'shish
+              </button>
+            )}
+            {[{ value: "" as const, label: "Barchasi" }, ...ROOM_TYPES].map((option) => (
+              <button
+                key={option.value}
+                onClick={() => setRoomTypeFilter(option.value)}
+                className={`px-3 h-[36px] border border-[#eaeaea] rounded-[6px] text-[13px] cursor-pointer ${
+                  roomTypeFilter === option.value ? "bg-[#0D9488] text-white" : "text-black"
+                }`}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
           {roomsLoading ? (
             <div className="flex justify-center py-16">
               <Spin indicator={<LoadingOutlined spin />} size="large" />
             </div>
+          ) : shownRooms.length === 0 && rooms.length > 0 ? (
+            <Empty description={`${roomTypeLabel(roomTypeFilter as RoomType)} xona yo'q`} />
           ) : rooms.length === 0 ? (
             <Empty
               description={
@@ -924,7 +979,7 @@ export default function Statsionar() {
             />
           ) : (
             <div className="grid xl:grid-cols-3 md:grid-cols-2 grid-cols-1 gap-3">
-              {rooms.map((room) => (
+              {shownRooms.map((room) => (
                 <div
                   key={room.id}
                   className={`border bg-white border-[#E8E8E8] rounded-[10px] p-4 ${
@@ -934,7 +989,7 @@ export default function Statsionar() {
                   <div className="flex items-start justify-between gap-2 mb-3">
                     <div>
                       <h3 className="font-[600] text-[16px]">
-                        {room.name} xona{" "}
+                        {room.name} xona <RoomTypeBadge type={room.room_type} />{" "}
                         {!room.is_active && (
                           <span className="text-[11px] font-[500] text-[#8F99A3]">(nofaol)</span>
                         )}
@@ -1091,7 +1146,7 @@ export default function Statsionar() {
                   <div>
                     <p className="font-[600] text-[15px]">{item.patient.fio}</p>
                     <p className="text-[12px] text-[#8F99A3]">
-                      {item.room} xona, {item.bed}-karavot
+                      {item.room} xona, {item.bed}-karavot ({roomTypeLabel(item.room_type)})
                       {item.doctor ? ` · ${item.doctor}` : ""}
                     </p>
                   </div>

@@ -8,12 +8,14 @@ class RoomAdmin(admin.ModelAdmin):
     list_display = (
         'name',
         'clinic',
+        'room_type',
         'daily_price',
         'is_active'
     )
 
     list_filter = (
         'clinic',
+        'room_type',
         'is_active'
     )
 

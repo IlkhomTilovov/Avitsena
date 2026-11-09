@@ -546,6 +546,7 @@ export interface SupportMessageItem {
 
 // ---- Statsionar (inpatient) ----
 export type AdmissionStatus = "active" | "discharged";
+export type RoomType = "standard" | "vip";
 
 export interface InpatientBed {
   id: string;
@@ -562,6 +563,7 @@ export interface InpatientBed {
 export interface InpatientRoom {
   id: string;
   name: string;
+  room_type: RoomType;
   daily_price: number;
   is_active: boolean;
   beds: InpatientBed[];
@@ -571,6 +573,7 @@ export interface AdmissionListItem {
   id: string;
   patient: { id: string; code: string | null; fio: string; phone: string };
   room: string;
+  room_type: RoomType;
   bed: string;
   doctor: string | null;
   status: AdmissionStatus;
@@ -621,6 +624,79 @@ export interface AdmissionPayload {
   daily_price?: number;
   reason?: string;
 }
+
+// ---- Ombor (warehouse) ----
+export type WarehouseCategory = "medicine" | "material" | "lab" | "household" | "other";
+export type StockMovementType = "in" | "out" | "write_off" | "adjust";
+export type StockStatus = "ok" | "low" | "out";
+
+export interface WarehouseItem {
+  id: string;
+  name: string;
+  category: WarehouseCategory;
+  category_display: string;
+  unit: string;
+  quantity: number;
+  min_quantity: number;
+  last_price: number;
+  value: number;
+  stock_status: StockStatus;
+  is_active: boolean;
+}
+
+export interface StockMovement {
+  id: string;
+  item: string;
+  item_name: string;
+  unit: string;
+  type: StockMovementType;
+  type_display: string;
+  change: number;
+  balance_after: number;
+  unit_price: number | null;
+  total: number | null;
+  supplier: string | null;
+  expiry_date: string | null;
+  note: string | null;
+  date: string;
+  created_by: string | null;
+  created_at: string;
+}
+
+export interface WarehouseSummary {
+  items_count: number;
+  out_of_stock_count: number;
+  low_stock_count: number;
+  stock_value: number;
+  month_in_value: number;
+  expiry_warning_days: number;
+  expiring?: StockMovement[];
+}
+
+export interface WarehouseItemPayload {
+  name?: string;
+  category?: WarehouseCategory;
+  unit?: string;
+  min_quantity?: number;
+  is_active?: boolean;
+}
+
+export interface StockMovementPayload {
+  item: string;
+  type: StockMovementType;
+  quantity: number;
+  unit_price?: number | null;
+  supplier?: string;
+  expiry_date?: string | null;
+  note?: string;
+  date?: string;
+}
+
+type Paginated<T> = {
+  success: boolean;
+  data?: T[];
+  meta: { total_pages: number; total_items: number; current_page: number };
+};
 
 export const AvitcenaAdmin = {
   authLogin: async (obj: { phone: string; password: string }) => {
@@ -1375,6 +1451,7 @@ export const AvitcenaAdmin = {
 
   createRoom: async (payload: {
     name: string;
+    room_type: RoomType;
     daily_price: number;
     bed_count?: number;
   }): Promise<{ success: boolean; data: InpatientRoom }> => {
@@ -1384,7 +1461,12 @@ export const AvitcenaAdmin = {
 
   updateRoom: async (
     id: string,
-    payload: Partial<{ name: string; daily_price: number; is_active: boolean }>
+    payload: Partial<{
+      name: string;
+      room_type: RoomType;
+      daily_price: number;
+      is_active: boolean;
+    }>
   ): Promise<{ success: boolean; data: InpatientRoom }> => {
     const response = await api.patch(`${baseApi}/v1/inpatient/rooms/${id}`, payload);
     return response.data;
@@ -1507,6 +1589,90 @@ export const AvitcenaAdmin = {
     const response = await api.delete(
       `${baseApi}/v1/inpatient/admissions/${id}/services/${serviceId}`
     );
+    return response.data;
+  },
+
+  // ---- Ombor (warehouse) ----
+  getWarehouseSummary: async (): Promise<{ success: boolean; data: WarehouseSummary }> => {
+    const response = await api.get(`${baseApi}/v1/warehouse/summary`);
+    return response.data;
+  },
+
+  getWarehouseItems: async (params: {
+    search?: string;
+    category?: WarehouseCategory;
+    stock?: "low" | "out";
+    include_inactive?: boolean;
+    page?: number;
+    per_page?: number;
+  }): Promise<Paginated<WarehouseItem>> => {
+    const response = await api.get(`${baseApi}/v1/warehouse/items`, {
+      params: {
+        search: params.search || undefined,
+        category: params.category || undefined,
+        stock: params.stock || undefined,
+        include_inactive: params.include_inactive || undefined,
+        page: params.page || undefined,
+        per_page: params.per_page || undefined,
+      },
+    });
+    return response.data;
+  },
+
+  getWarehouseItem: async (
+    id: string
+  ): Promise<{ success: boolean; data: WarehouseItem & { movements?: StockMovement[] } }> => {
+    const response = await api.get(`${baseApi}/v1/warehouse/items/${id}`);
+    return response.data;
+  },
+
+  createWarehouseItem: async (
+    payload: WarehouseItemPayload
+  ): Promise<{ success: boolean; data: WarehouseItem }> => {
+    const response = await api.post(`${baseApi}/v1/warehouse/items`, payload);
+    return response.data;
+  },
+
+  updateWarehouseItem: async (
+    id: string,
+    payload: WarehouseItemPayload
+  ): Promise<{ success: boolean; data: WarehouseItem }> => {
+    const response = await api.patch(`${baseApi}/v1/warehouse/items/${id}`, payload);
+    return response.data;
+  },
+
+  deleteWarehouseItem: async (id: string): Promise<DeleteResponse> => {
+    const response = await api.delete(`${baseApi}/v1/warehouse/items/${id}`);
+    return response.data;
+  },
+
+  getStockMovements: async (params: {
+    item?: string;
+    type?: StockMovementType;
+    date_from?: string;
+    date_to?: string;
+    search?: string;
+    page?: number;
+    per_page?: number;
+  }): Promise<Paginated<StockMovement>> => {
+    const response = await api.get(`${baseApi}/v1/warehouse/movements`, {
+      params: {
+        item: params.item || undefined,
+        type: params.type || undefined,
+        date_from: params.date_from || undefined,
+        date_to: params.date_to || undefined,
+        search: params.search || undefined,
+        page: params.page || undefined,
+        per_page: params.per_page || undefined,
+      },
+    });
+    return response.data;
+  },
+
+  createStockMovement: async (
+    payload: StockMovementPayload
+  ): Promise<{ success: boolean; data: StockMovement }> => {
+    const response = await api.post(`${baseApi}/v1/warehouse/movements`, payload);
     return response.data;
   },
 

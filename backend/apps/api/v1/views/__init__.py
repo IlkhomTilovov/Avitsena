@@ -6,3 +6,4 @@ from .clinics import *
 from .finance import *
 from .support import *
 from .inpatient import *
+from .warehouse import *

@@ -60,6 +60,12 @@ from apps.api.v1.views import (
     AdmissionServiceCreateView,
     AdmissionServiceDetailView,
 
+    #warehouse
+    WarehouseSummaryView,
+    WarehouseItemListCreateView,
+    WarehouseItemDetailView,
+    StockMovementListCreateView,
+
     #support
     SupportMessageCreateView,
     SupportMessageReplyView,
@@ -129,6 +135,12 @@ urlpatterns = [
     path('inpatient/admissions/<uuid:id>/notes', AdmissionNoteCreateView.as_view(), name='inpatient_admission_note_create'),
     path('inpatient/admissions/<uuid:id>/services', AdmissionServiceCreateView.as_view(), name='inpatient_admission_service_create'),
     path('inpatient/admissions/<uuid:id>/services/<uuid:service_id>', AdmissionServiceDetailView.as_view(), name='inpatient_admission_service_detail'),
+
+    # warehouse
+    path('warehouse/summary', WarehouseSummaryView.as_view(), name='warehouse_summary'),
+    path('warehouse/items', WarehouseItemListCreateView.as_view(), name='warehouse_item_list_create'),
+    path('warehouse/items/<uuid:id>', WarehouseItemDetailView.as_view(), name='warehouse_item_detail'),
+    path('warehouse/movements', StockMovementListCreateView.as_view(), name='warehouse_movement_list_create'),
 
     # support
     path('support/messages', SupportMessageCreateView.as_view(), name='support_message_create'),

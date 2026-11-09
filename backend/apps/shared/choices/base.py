@@ -57,3 +57,23 @@ class FinanceCategoryColor(TextChoices):
 class AdmissionStatus(TextChoices):
     ACTIVE = 'active', _('Yotibdi')
     DISCHARGED = 'discharged', _('Chiqarilgan')
+
+
+class RoomType(TextChoices):
+    STANDARD = 'standard', _('Standart')
+    VIP = 'vip', _('VIP')
+
+
+class WarehouseCategory(TextChoices):
+    MEDICINE = 'medicine', _('Dori')
+    MATERIAL = 'material', _('Tibbiy material')
+    LAB = 'lab', _('Laboratoriya')
+    HOUSEHOLD = 'household', _("Xo'jalik")
+    OTHER = 'other', _('Boshqa')
+
+
+class StockMovementType(TextChoices):
+    IN = 'in', _('Kirim')
+    OUT = 'out', _('Chiqim')
+    WRITE_OFF = 'write_off', _('Hisobdan chiqarish')
+    ADJUST = 'adjust', _('Inventarizatsiya')
