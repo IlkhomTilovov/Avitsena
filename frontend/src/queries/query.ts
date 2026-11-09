@@ -544,6 +544,84 @@ export interface SupportMessageItem {
   created_at: string;
 }
 
+// ---- Statsionar (inpatient) ----
+export type AdmissionStatus = "active" | "discharged";
+
+export interface InpatientBed {
+  id: string;
+  name: string;
+  is_active: boolean;
+  occupant: {
+    admission_id: string;
+    patient_id: string;
+    patient_fio: string;
+    admitted_at: string;
+  } | null;
+}
+
+export interface InpatientRoom {
+  id: string;
+  name: string;
+  daily_price: number;
+  is_active: boolean;
+  beds: InpatientBed[];
+}
+
+export interface AdmissionListItem {
+  id: string;
+  patient: { id: string; code: string | null; fio: string; phone: string };
+  room: string;
+  bed: string;
+  doctor: string | null;
+  status: AdmissionStatus;
+  admitted_at: string;
+  discharged_at: string | null;
+  reason: string | null;
+  discharge_diagnosis: string | null;
+  days: number;
+  total: number;
+}
+
+export interface AdmissionDetail extends AdmissionListItem {
+  bed_id: string;
+  doctor_id: string | null;
+  daily_price: number;
+  discharge_notes: string | null;
+  created_by: string | null;
+  notes: { id: string; text: string; created_by: string | null; created_at: string }[];
+  services: {
+    id: string;
+    service: string | null;
+    name: string;
+    price: number;
+    quantity: number;
+    date: string;
+    total: number;
+  }[];
+  bill: {
+    days: number;
+    daily_price: number;
+    stay_total: number;
+    services_total: number;
+    total: number;
+  };
+}
+
+export interface AdmissionsResponse {
+  success: boolean;
+  data: AdmissionListItem[];
+  meta: { total_pages: number; total_items: number; current_page: number };
+}
+
+export interface AdmissionPayload {
+  patient?: string;
+  bed?: string;
+  doctor?: string | null;
+  admitted_at?: string;
+  daily_price?: number;
+  reason?: string;
+}
+
 export const AvitcenaAdmin = {
   authLogin: async (obj: { phone: string; password: string }) => {
     const response = await axios.post(`${baseApi}/v1/auth/login`, obj, {
@@ -1285,6 +1363,149 @@ export const AvitcenaAdmin = {
           "Content-Type": "application/json",
         },
       }
+    );
+    return response.data;
+  },
+
+  // ---- Statsionar (inpatient) ----
+  getRooms: async (): Promise<{ success: boolean; data?: InpatientRoom[] }> => {
+    const response = await api.get(`${baseApi}/v1/inpatient/rooms`);
+    return response.data;
+  },
+
+  createRoom: async (payload: {
+    name: string;
+    daily_price: number;
+    bed_count?: number;
+  }): Promise<{ success: boolean; data: InpatientRoom }> => {
+    const response = await api.post(`${baseApi}/v1/inpatient/rooms`, payload);
+    return response.data;
+  },
+
+  updateRoom: async (
+    id: string,
+    payload: Partial<{ name: string; daily_price: number; is_active: boolean }>
+  ): Promise<{ success: boolean; data: InpatientRoom }> => {
+    const response = await api.patch(`${baseApi}/v1/inpatient/rooms/${id}`, payload);
+    return response.data;
+  },
+
+  deleteRoom: async (id: string): Promise<DeleteResponse> => {
+    const response = await api.delete(`${baseApi}/v1/inpatient/rooms/${id}`);
+    return response.data;
+  },
+
+  createBed: async (
+    roomId: string,
+    payload: { name: string }
+  ): Promise<{ success: boolean; data: InpatientBed }> => {
+    const response = await api.post(
+      `${baseApi}/v1/inpatient/rooms/${roomId}/beds`,
+      payload
+    );
+    return response.data;
+  },
+
+  updateBed: async (
+    id: string,
+    payload: Partial<{ name: string; is_active: boolean }>
+  ): Promise<{ success: boolean; data: InpatientBed }> => {
+    const response = await api.patch(`${baseApi}/v1/inpatient/beds/${id}`, payload);
+    return response.data;
+  },
+
+  deleteBed: async (id: string): Promise<DeleteResponse> => {
+    const response = await api.delete(`${baseApi}/v1/inpatient/beds/${id}`);
+    return response.data;
+  },
+
+  getAdmissions: async (params: {
+    status?: AdmissionStatus;
+    patient?: string;
+    search?: string;
+    page?: number;
+    per_page?: number;
+  }): Promise<AdmissionsResponse> => {
+    const response = await api.get(`${baseApi}/v1/inpatient/admissions`, {
+      params: {
+        status: params.status || undefined,
+        patient: params.patient || undefined,
+        search: params.search || undefined,
+        page: params.page || undefined,
+        per_page: params.per_page || undefined,
+      },
+    });
+    return response.data;
+  },
+
+  getAdmission: async (
+    id: string
+  ): Promise<{ success: boolean; data: AdmissionDetail }> => {
+    const response = await api.get(`${baseApi}/v1/inpatient/admissions/${id}`);
+    return response.data;
+  },
+
+  createAdmission: async (
+    payload: AdmissionPayload
+  ): Promise<{ success: boolean; data: AdmissionDetail }> => {
+    const response = await api.post(`${baseApi}/v1/inpatient/admissions`, payload);
+    return response.data;
+  },
+
+  updateAdmission: async (
+    id: string,
+    payload: AdmissionPayload
+  ): Promise<{ success: boolean; data: AdmissionDetail }> => {
+    const response = await api.patch(
+      `${baseApi}/v1/inpatient/admissions/${id}`,
+      payload
+    );
+    return response.data;
+  },
+
+  dischargeAdmission: async (
+    id: string,
+    payload: {
+      discharged_at?: string;
+      discharge_diagnosis?: string;
+      discharge_notes?: string;
+    }
+  ): Promise<{ success: boolean; data: AdmissionDetail }> => {
+    const response = await api.post(
+      `${baseApi}/v1/inpatient/admissions/${id}/discharge`,
+      payload
+    );
+    return response.data;
+  },
+
+  addAdmissionNote: async (
+    id: string,
+    text: string
+  ): Promise<{ success: boolean; data: AdmissionDetail }> => {
+    const response = await api.post(
+      `${baseApi}/v1/inpatient/admissions/${id}/notes`,
+      { text }
+    );
+    return response.data;
+  },
+
+  addAdmissionService: async (
+    id: string,
+    payload: { service: string; quantity: number; date?: string }
+  ): Promise<{ success: boolean; data: AdmissionDetail }> => {
+    const response = await api.post(
+      `${baseApi}/v1/inpatient/admissions/${id}/services`,
+      payload
+    );
+    return response.data;
+  },
+
+  deleteAdmissionService: async (
+    id: string,
+    serviceId: string
+  ): Promise<{ success: boolean; data: AdmissionDetail }> => {
+    const response = await api.delete(
+      `${baseApi}/v1/inpatient/admissions/${id}/services/${serviceId}`
     );
     return response.data;
   },

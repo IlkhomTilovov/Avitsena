@@ -421,7 +421,13 @@ export default function PatientsInfo() {
 
   // 2. Bemor tashriflari
   // Tibbiy tarix tablari (Tashriflar / Tashxislar / Tahlillar / Retseptlar / To'lovlar)
-  type HistoryTab = "visits" | "diagnoses" | "analyses" | "recipes" | "payments";
+  type HistoryTab =
+    | "visits"
+    | "diagnoses"
+    | "analyses"
+    | "recipes"
+    | "payments"
+    | "inpatient";
   const [activeHistoryTab, setActiveHistoryTab] = useState<HistoryTab>("visits");
 
   const visitsFilter =
@@ -478,6 +484,14 @@ export default function PatientsInfo() {
     queryKey: ["patientAnalyses", id],
     queryFn: () => AvitcenaAdmin.getPatientAnalyses(id!),
     enabled: !!id,
+  });
+
+  // Statsionar tarixi (shifokorga ochiq emas)
+  const canSeeInpatient = SecureStorage.getItem("role") !== "doctor";
+  const { data: admissionsData, isLoading: admissionsLoading } = useQuery({
+    queryKey: ["admissions", "patient", id],
+    queryFn: () => AvitcenaAdmin.getAdmissions({ patient: id!, per_page: 50 }),
+    enabled: !!id && canSeeInpatient,
   });
 
   // Tashrifga bog'lanmagan tahlillar "Tashriflar" tabida alohida ko'rinadi
@@ -1316,6 +1330,9 @@ export default function PatientsInfo() {
                   { key: "analyses", label: "Tahlillar", count: patientData?.data.stats?.analysis_count },
                   { key: "recipes", label: "Retseptlar", count: patientData?.data.stats?.recipe_count },
                   { key: "payments", label: "To'lovlar", count: patientData?.data.stats?.payment_count },
+                  ...(canSeeInpatient
+                    ? [{ key: "inpatient", label: "Statsionar", count: admissionsData?.meta?.total_items }]
+                    : []),
                 ] as { key: HistoryTab; label: string; count?: number }[]
               ).map((tab) => (
                 <button
@@ -1346,6 +1363,7 @@ export default function PatientsInfo() {
                   {activeHistoryTab === "analyses" && "Tahlillar"}
                   {activeHistoryTab === "recipes" && "Retseptlar"}
                   {activeHistoryTab === "payments" && "To'lovlar"}
+                  {activeHistoryTab === "inpatient" && "Statsionar"}
                 </h3>
                 {activeHistoryTab === "analyses" && currentPath !== "doctor" ? (
                   <button
@@ -1971,7 +1989,70 @@ export default function PatientsInfo() {
                 )}
               </Modal>
               {/* Tashriflar / Tashxislar / Retseptlar / To'lovlar ro‘yxati */}
+              {/* Statsionar tarixi */}
+              {activeHistoryTab === "inpatient" &&
+                (admissionsLoading ? (
+                  <div className="flex justify-center items-center py-10">
+                    <Spin indicator={<LoadingOutlined spin />} size="large" />
+                  </div>
+                ) : !admissionsData?.data?.length ? (
+                  <Empty description="Bemor statsionarda yotmagan" />
+                ) : (
+                  admissionsData.data.map((adm) => (
+                    <div
+                      key={adm.id}
+                      className="border border-[#c9c9c9] rounded-[10px] border-l-[4px] border-l-[#2A81D8] px-6 py-4 mb-4"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <h4 className="md:text-[17px] text-[13px] font-[500]">
+                          {adm.room} xona, {adm.bed}-karavot
+                        </h4>
+                        <span
+                          className={`px-2 py-0.5 rounded-[4px] text-[11px] font-[600] ${
+                            adm.status === "active"
+                              ? "bg-[#E9FBF4] text-[#0D9488]"
+                              : "bg-[#F1F5F4] text-[#64727B]"
+                          }`}
+                        >
+                          {adm.status === "active" ? "Yotibdi" : "Chiqarilgan"}
+                        </span>
+                      </div>
+                      <ul className="mt-3 flex flex-col gap-1 md:text-[14px] text-[12px] text-[#676767]">
+                        <li>
+                          <span className="text-[#000]">Muddat:</span>{" "}
+                          {dayjs(adm.admitted_at).format("YYYY-MM-DD HH:mm")} —{" "}
+                          {adm.discharged_at
+                            ? dayjs(adm.discharged_at).format("YYYY-MM-DD HH:mm")
+                            : "hozirgacha"}{" "}
+                          ({adm.days} kun)
+                        </li>
+                        {adm.doctor && (
+                          <li>
+                            <span className="text-[#000]">Shifokor:</span> {adm.doctor}
+                          </li>
+                        )}
+                        {adm.reason && (
+                          <li className="whitespace-pre-wrap">
+                            <span className="text-[#000]">Sabab:</span> {adm.reason}
+                          </li>
+                        )}
+                        {adm.discharge_diagnosis && (
+                          <li className="whitespace-pre-wrap">
+                            <span className="text-[#000]">Yakuniy tashxis:</span>{" "}
+                            {adm.discharge_diagnosis}
+                          </li>
+                        )}
+                        <li>
+                          <span className="text-[#000]">Hisob:</span>{" "}
+                          {adm.total.toLocaleString()} so'm
+                        </li>
+                      </ul>
+                    </div>
+                  ))
+                ))}
+
               {activeHistoryTab !== "analyses" &&
+                activeHistoryTab !== "inpatient" &&
                 (patientVisitesLoading ? (
                   <div className="flex justify-center items-center py-10">
                     <Spin indicator={<LoadingOutlined spin />} size="large" />
@@ -2171,6 +2252,7 @@ export default function PatientsInfo() {
 
               {/* Pagination */}
               {activeHistoryTab !== "analyses" &&
+                activeHistoryTab !== "inpatient" &&
                 patientVisitesData?.meta?.total_items &&
                 patientVisitesData.meta.total_items > 10 && (
                   <div className="px-6 py-4 border bg-[#F9FAFB] border-[#E0E6EB] flex items-center justify-end rounded-[10px]">

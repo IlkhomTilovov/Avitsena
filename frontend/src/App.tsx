@@ -19,6 +19,7 @@ import Services from "./pages/Services";
 import EmployeeInfo from "./components/EmployeeInfo";
 import SettingDoctor from "./pages/SettingDoctor";
 import Moliya from "./pages/Moliya";
+import Statsionar from "./pages/Statsionar";
 import SupportMessages from "./pages/SupportMessages";
 
 function App() {
@@ -101,6 +102,14 @@ function App() {
               </PriviteRote>
             }
           />
+          <Route
+            path="statsionar"
+            element={
+              <PriviteRote roles={["admin"]}>
+                <Statsionar />
+              </PriviteRote>
+            }
+          />
         </Route>
 
         <Route
@@ -140,6 +149,14 @@ function App() {
             element={
               <PriviteRote roles={["registrator"]}>
                 <Settings />
+              </PriviteRote>
+            }
+          />
+          <Route
+            path="statsionar"
+            element={
+              <PriviteRote roles={["registrator"]}>
+                <Statsionar />
               </PriviteRote>
             }
           />

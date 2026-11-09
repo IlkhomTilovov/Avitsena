@@ -52,3 +52,8 @@ class FinanceCategoryColor(TextChoices):
     ORANGE = 'orange', _('Orange')
     RED = 'red', _('Red')
     GRAY = 'gray', _('Gray')
+
+
+class AdmissionStatus(TextChoices):
+    ACTIVE = 'active', _('Yotibdi')
+    DISCHARGED = 'discharged', _('Chiqarilgan')

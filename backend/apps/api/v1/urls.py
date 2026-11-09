@@ -48,6 +48,18 @@ from apps.api.v1.views import (
     ExpenseCreateView,
     ExpenseDetailView,
 
+    #inpatient
+    RoomListCreateView,
+    RoomDetailView,
+    BedCreateView,
+    BedDetailView,
+    AdmissionListCreateView,
+    AdmissionDetailView,
+    AdmissionDischargeView,
+    AdmissionNoteCreateView,
+    AdmissionServiceCreateView,
+    AdmissionServiceDetailView,
+
     #support
     SupportMessageCreateView,
     SupportMessageReplyView,
@@ -105,6 +117,18 @@ urlpatterns = [
     path('finance/categories/<uuid:id>', FinanceCategoryDetailView.as_view(), name='finance_category_detail'),
     path('finance/expenses', ExpenseCreateView.as_view(), name='finance_expense_create'),
     path('finance/expenses/<uuid:id>', ExpenseDetailView.as_view(), name='finance_expense_detail'),
+
+    # inpatient
+    path('inpatient/rooms', RoomListCreateView.as_view(), name='inpatient_room_list_create'),
+    path('inpatient/rooms/<uuid:id>', RoomDetailView.as_view(), name='inpatient_room_detail'),
+    path('inpatient/rooms/<uuid:id>/beds', BedCreateView.as_view(), name='inpatient_bed_create'),
+    path('inpatient/beds/<uuid:id>', BedDetailView.as_view(), name='inpatient_bed_detail'),
+    path('inpatient/admissions', AdmissionListCreateView.as_view(), name='inpatient_admission_list_create'),
+    path('inpatient/admissions/<uuid:id>', AdmissionDetailView.as_view(), name='inpatient_admission_detail'),
+    path('inpatient/admissions/<uuid:id>/discharge', AdmissionDischargeView.as_view(), name='inpatient_admission_discharge'),
+    path('inpatient/admissions/<uuid:id>/notes', AdmissionNoteCreateView.as_view(), name='inpatient_admission_note_create'),
+    path('inpatient/admissions/<uuid:id>/services', AdmissionServiceCreateView.as_view(), name='inpatient_admission_service_create'),
+    path('inpatient/admissions/<uuid:id>/services/<uuid:service_id>', AdmissionServiceDetailView.as_view(), name='inpatient_admission_service_detail'),
 
     # support
     path('support/messages', SupportMessageCreateView.as_view(), name='support_message_create'),
