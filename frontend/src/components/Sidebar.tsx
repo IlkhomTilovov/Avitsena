@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { Modal, Input, notification, Spin } from "antd";
 import { LoadingOutlined } from "@ant-design/icons";
 import { IoHomeOutline, IoSettingsOutline } from "react-icons/io5";
-import { LuBedDouble, LuUsers, LuUserPlus, LuWarehouse } from "react-icons/lu";
+import { LuBedDouble, LuUsers, LuUserPlus, LuWallet, LuWarehouse } from "react-icons/lu";
 import { TbReportMedical, TbCategoryPlus } from "react-icons/tb";
 import { MdOutlineDateRange } from "react-icons/md";
 import { FiLogOut, FiHeadphones, FiCheckCircle, FiClock } from "react-icons/fi";
@@ -101,6 +101,7 @@ export default function Sidebar() {
 
   const systemItems: NavItem[] = [
     { key: "services", path: "/services", icon: <TbCategoryPlus />, label: "Xizmatlar" },
+    { key: "moliya", path: "/moliya", icon: <LuWallet />, label: "Moliya" },
     { key: "settings", path: "/settings", icon: <IoSettingsOutline />, label: "Sozlamalar" },
   ];
 

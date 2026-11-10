@@ -31,10 +31,11 @@ from apps.shared.choices import (
     FinanceCategoryColor,
     FinanceTransactionType,
     PaymentMethod,
-    StockMovementType
+    StockMovementType,
+    UserRole
 )
 from apps.shared.pagination import CustomPagination
-from apps.shared.permissions import IsSuperAdmin
+from apps.shared.permissions import CanViewFinance
 from apps.shared.response import CustomResponse
 from apps.shared.utils import get_current_month_data
 from apps.users.models import CustomUser
@@ -63,6 +64,15 @@ DEFAULT_CHIQIM_CATEGORIES = [
 
 
 def _get_clinic(request):
+
+    # Admin va registrator faqat o'z klinikasini ko'radi; klinikani tanlash faqat superadminga
+    if request.user.role != UserRole.SUPERADMIN:
+
+        if not request.user.clinic:
+
+            raise NotFound('Clinic not found')
+
+        return request.user.clinic
 
     try:
 
@@ -404,7 +414,7 @@ def _public_row(row) -> dict:
 
 class FinanceSummaryView(APIView):
 
-    permission_classes = (IsSuperAdmin, )
+    permission_classes = (CanViewFinance, )
 
     @extend_schema(tags=['finance'], parameters=FINANCE_FILTER_PARAMETERS[:3])
     def get(self, request):
@@ -489,7 +499,7 @@ class FinanceSummaryView(APIView):
 
 class FinanceTransactionsListView(APIView):
 
-    permission_classes = (IsSuperAdmin, )
+    permission_classes = (CanViewFinance, )
 
     @extend_schema(
         tags=['finance'],
@@ -542,7 +552,7 @@ class FinanceTransactionsListView(APIView):
 
 class FinanceExportView(APIView):
 
-    permission_classes = (IsSuperAdmin, )
+    permission_classes = (CanViewFinance, )
 
     @extend_schema(tags=['finance'], parameters=FINANCE_FILTER_PARAMETERS)
     def get(self, request):
@@ -587,7 +597,7 @@ class FinanceExportView(APIView):
 
 class FinanceFilterOptionsView(APIView):
 
-    permission_classes = (IsSuperAdmin, )
+    permission_classes = (CanViewFinance, )
 
     @extend_schema(tags=['finance'], parameters=[FINANCE_CLINIC_PARAMETER])
     def get(self, request):
@@ -627,7 +637,7 @@ class FinanceFilterOptionsView(APIView):
 
 class FinanceCategoryListCreateView(APIView):
 
-    permission_classes = (IsSuperAdmin, )
+    permission_classes = (CanViewFinance, )
     serializer_class = FinanceCategorySerializer
 
     @extend_schema(
@@ -734,7 +744,7 @@ class FinanceCategoryListCreateView(APIView):
 
 class FinanceCategoryDetailView(APIView):
 
-    permission_classes = (IsSuperAdmin, )
+    permission_classes = (CanViewFinance, )
     serializer_class = FinanceCategorySerializer
 
     def get_object(self):
@@ -776,7 +786,7 @@ class FinanceCategoryDetailView(APIView):
 
 class ExpenseCreateView(APIView):
 
-    permission_classes = (IsSuperAdmin, )
+    permission_classes = (CanViewFinance, )
     serializer_class = ExpenseCreateSerializer
     pagination_class = CustomPagination
 
@@ -809,7 +819,7 @@ class ExpenseCreateView(APIView):
 
 class ExpenseDetailView(APIView):
 
-    permission_classes = (IsSuperAdmin, )
+    permission_classes = (CanViewFinance, )
     serializer_class = ExpenseSerializer
 
     def get_object(self):

@@ -119,6 +119,14 @@ function App() {
               </PriviteRote>
             }
           />
+          <Route
+            path="moliya"
+            element={
+              <PriviteRote roles={["admin"]}>
+                <Moliya />
+              </PriviteRote>
+            }
+          />
         </Route>
 
         <Route
@@ -174,6 +182,14 @@ function App() {
             element={
               <PriviteRote roles={["registrator"]}>
                 <Ombor />
+              </PriviteRote>
+            }
+          />
+          <Route
+            path="moliya"
+            element={
+              <PriviteRote roles={["registrator"]}>
+                <Moliya />
               </PriviteRote>
             }
           />

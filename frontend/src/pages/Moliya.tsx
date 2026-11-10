@@ -41,6 +41,7 @@ import {
 import FinanceCategoriesDrawer from "../components/FinanceCategoriesDrawer";
 import { useDebouncedValue } from "../utils/useDebouncedValue";
 import { apiErrorMessage } from "../utils/apiError";
+import SecureStorage from "react-secure-storage";
 import "../App.css";
 
 const { RangePicker } = DatePicker;
@@ -252,6 +253,15 @@ function MethodToggle({ value, onChange }: { value?: CashOrCard; onChange?: (v: 
 // ========================= Sahifa =========================
 
 export default function Moliya() {
+  // Admin va registrator faqat o'z klinikasini ko'radi, klinikani server o'zi aniqlaydi
+  if (SecureStorage.getItem("role") !== "superadmin") {
+    return <MoliyaContent clinicId="" clinicSelect={null} />;
+  }
+
+  return <SuperAdminMoliya />;
+}
+
+function SuperAdminMoliya() {
   const [selectedClinicId, setSelectedClinicId] = useState<string | undefined>();
 
   const { data: clinicsData, isLoading } = useQuery({
