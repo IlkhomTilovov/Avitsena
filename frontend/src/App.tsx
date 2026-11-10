@@ -193,6 +193,14 @@ function App() {
               </PriviteRote>
             }
           />
+          <Route
+            path="services"
+            element={
+              <PriviteRote roles={["registrator"]}>
+                <Services />
+              </PriviteRote>
+            }
+          />
         </Route>
         <Route
           path="doctor"

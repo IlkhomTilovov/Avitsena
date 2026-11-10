@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import SecureStorage from "react-secure-storage";
+import { getRoleHomePath } from "../utils/roleRoutes";
 import {
   Button,
   Form,
@@ -420,7 +422,10 @@ export default function Services() {
 
       {/* Breadcrumb */}
       <div className="flex items-center gap-2 mt-4 text-[13px]">
-        <Link to="/dashboard" className="text-[#8F99A3] hover:text-[#44525C]">
+        <Link
+          to={getRoleHomePath(SecureStorage.getItem("role") as string | null)}
+          className="text-[#8F99A3] hover:text-[#44525C]"
+        >
           Bosh sahifa
         </Link>
         <span className="text-[#C7CED3]">/</span>

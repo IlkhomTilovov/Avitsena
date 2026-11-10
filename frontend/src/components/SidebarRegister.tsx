@@ -8,6 +8,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { IoSettingsOutline } from "react-icons/io5";
 import { PiUserListBold } from "react-icons/pi";
 import { LuBedDouble, LuWallet, LuWarehouse } from "react-icons/lu";
+import { TbCategoryPlus } from "react-icons/tb";
 import logo from "../../public/images/logo.svg";
 import logoText from "../../public/images/logo-text.svg";
 import "../App.css";
@@ -28,6 +29,7 @@ export default function SidebarRegister() {
     { key: "patients", icon: <PiUserListBold />, label: "Bemorlar ro'yhati" },
     { key: "statsionar", icon: <LuBedDouble />, label: "Statsionar" },
     { key: "ombor", icon: <LuWarehouse />, label: "Ombor" },
+    { key: "services", icon: <TbCategoryPlus />, label: "Xizmatlar" },
     { key: "moliya", icon: <LuWallet />, label: "Moliya" },
     { key: "settings", icon: <IoSettingsOutline />, label: "Sozlamalar " },
   ];
