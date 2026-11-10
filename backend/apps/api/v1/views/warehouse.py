@@ -390,6 +390,7 @@ class StockMovementListCreateView(APIView):
                 change=change,
                 balance_after=item.quantity,
                 unit_price=unit_price if movement_type == StockMovementType.IN else None,
+                payment_method=data.get('payment_method') if movement_type == StockMovementType.IN and unit_price else None,
                 supplier=(data.get('supplier') or '').strip() or None,
                 expiry_date=data.get('expiry_date') if movement_type == StockMovementType.IN else None,
                 note=(data.get('note') or '').strip() or None,

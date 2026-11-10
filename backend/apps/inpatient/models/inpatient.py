@@ -3,7 +3,7 @@ from django.db.models import Q
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 from apps.shared.models import AbstractBaseModel
-from apps.shared.choices import AdmissionStatus, RoomType
+from apps.shared.choices import AdmissionStatus, PaymentMethod, RoomType
 
 
 class Room(AbstractBaseModel):
@@ -137,6 +137,19 @@ class Admission(AbstractBaseModel):
     )
 
     discharge_notes = models.TextField(
+        blank=True,
+        null=True
+    )
+
+    payment_method = models.CharField(
+        max_length=15,
+        choices=PaymentMethod.choices,
+        blank=True,
+        null=True
+    )
+
+    # Chiqarishda to'langan summa: hisob shu paytda yopiladi
+    paid_amount = models.PositiveIntegerField(
         blank=True,
         null=True
     )

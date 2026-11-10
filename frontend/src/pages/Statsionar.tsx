@@ -389,6 +389,7 @@ function AdmissionDrawer({
         discharged_at: (values.discharged_at as Dayjs)?.toISOString(),
         discharge_diagnosis: values.discharge_diagnosis?.trim() || "",
         discharge_notes: values.discharge_notes?.trim() || "",
+        payment_method: values.payment_method,
       }),
     {
       onSuccess: (result) => {
@@ -462,6 +463,13 @@ function AdmissionDrawer({
                 </p>
               )}
             </Section>
+          )}
+
+          {!isActive && admission.payment_method && (
+            <p className="text-[13px] mb-3 px-3 py-2 rounded-[8px] bg-[#E9FBF4] text-[#0D9488] font-[500]">
+              To'langan: {money(admission.paid_amount)} (
+              {admission.payment_method === "cash" ? "naqd" : "karta"})
+            </p>
           )}
 
           <Section title={isActive ? "Hozirgi hisob" : "Yakuniy hisob"}>
@@ -656,6 +664,21 @@ function AdmissionDrawer({
               </Form.Item>
               <Form.Item name="discharge_notes" label="Tavsiyalar">
                 <Input.TextArea rows={3} placeholder="Uyda davolanish, keyingi ko'rik..." />
+              </Form.Item>
+              <Form.Item
+                name="payment_method"
+                label={`To'lov: ${money(admission.bill.total)}`}
+                rules={[{ required: true, message: "To'lov turini tanlang" }]}
+                extra="Summa chiqish vaqtiga qarab qayta hisoblanadi"
+              >
+                <Select
+                  aria-label="To'lov turi"
+                  placeholder="Naqd yoki karta"
+                  options={[
+                    { value: "cash", label: "Naqd" },
+                    { value: "card", label: "Karta" },
+                  ]}
+                />
               </Form.Item>
               <p className="text-[12px] text-[#8F99A3] mb-3">
                 Chiqarilgandan keyin hisob yopiladi: muolaja va yozuv qo'shib bo'lmaydi.

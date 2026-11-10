@@ -57,6 +57,7 @@ import apiaxios from "./api";
 import SecureStorage from "react-secure-storage";
 import { useReactToPrint } from "react-to-print";
 import Receipt from "./Check";
+import VisitPayment from "./VisitPayment";
 
 // ========================= TYPES =========================
 // Pasport, ID, hujjatlar uchun
@@ -2233,6 +2234,14 @@ export default function PatientsInfo() {
                                   To'lov:
                                 </span>
                                 {item.total_price} so'm
+                                <VisitPayment
+                                  patientId={id!}
+                                  visitId={item.id}
+                                  amount={Number(item.total_price || 0)}
+                                  paymentMethodDisplay={item.payment_method_display}
+                                  canPay={currentPath !== "doctor"}
+                                  disabled={item.status === "cancelled"}
+                                />
                               </li>
                             </ul>
                           </div>

@@ -10,6 +10,7 @@ from apps.patients.models import (
 )
 from .services import ServiceSerializer
 from apps.patients.choices import DocumentType, PatientVisitStatus
+from apps.shared.choices import PAYMENT_METHODS_IN_USE
 from apps.users.models import CustomUser
 from typing import Union
 from django.utils import timezone
@@ -433,7 +434,15 @@ class PatientVisitCreateSerializer(serializers.ModelSerializer):
             'file',
             'payment_method'
         )
-    
+
+    def validate_payment_method(self, value):
+
+        if value and value not in dict(PAYMENT_METHODS_IN_USE):
+
+            raise serializers.ValidationError("To'lov turi naqd yoki karta bo'lishi kerak.")
+
+        return value
+
     def validate(self, attrs):
 
         total_price = 0
@@ -485,6 +494,7 @@ class PatientVisitCreateSerializer(serializers.ModelSerializer):
         if validated_data.get('payment_method'):
 
             validated_data['cashier'] = registrator
+            validated_data['paid_at'] = timezone.now()
 
         visit = PatientVisit.objects.create(**validated_data)
 
@@ -523,6 +533,7 @@ class PatientVisitListSerializer(serializers.ModelSerializer):
             'services',
             'payment_method',
             'payment_method_display',
+            'paid_at',
             'created_at'
         )
 
@@ -650,6 +661,7 @@ class PatientVisitDetailSerializer(serializers.ModelSerializer):
             'status',
             'payment_method',
             'payment_method_display',
+            'paid_at',
             'created_at',
             'updated_at'
         )
@@ -755,9 +767,15 @@ class TodayVisitListSerializer(serializers.ModelSerializer):
             'total_price',
             'payment_method',
             'payment_method_display',
+            'paid_at',
             'created_at'
         )
 
     def get_payment_method_display(self, instance) -> str | None:
 
         return instance.get_payment_method_display() if instance.payment_method else None
+
+
+class VisitPaymentSerializer(serializers.Serializer):
+
+    payment_method = serializers.ChoiceField(choices=PAYMENT_METHODS_IN_USE)

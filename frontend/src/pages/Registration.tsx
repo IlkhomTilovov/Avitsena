@@ -75,7 +75,7 @@ function GenderToggle({
 }
 
 const PAYMENT_METHODS = [
-  { value: "cash", label: "Naqt" },
+  { value: "cash", label: "Naqd" },
   { value: "card", label: "Karta" },
 ];
 

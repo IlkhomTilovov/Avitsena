@@ -299,6 +299,11 @@ class PatientVisit(AbstractBaseModel):
         null=True
     )
 
+    paid_at = models.DateTimeField(
+        blank=True,
+        null=True
+    )
+
     cashier = models.ForeignKey(
         'users.CustomUser',
         on_delete=models.SET_NULL,

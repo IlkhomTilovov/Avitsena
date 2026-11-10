@@ -386,17 +386,16 @@ export type DeleteResponse = {
   success?: boolean;
 };
 
+export type CashOrCard = "cash" | "card";
+export type FinanceSource = "visit" | "inpatient" | "manual" | "warehouse";
+
 export interface FinanceFilters {
   clinic: string;
   date_from?: string;
   date_to?: string;
   type?: "kirim" | "chiqim";
-  doctor?: string;
-  service?: string;
-  payment_method?: string;
-  category?: string;
-  status?: string;
-  cashier?: string;
+  payment_method?: CashOrCard;
+  source?: FinanceSource;
   search?: string;
   page?: number;
   per_page?: number;
@@ -414,64 +413,75 @@ function cleanFinanceFilters(filters: FinanceFilters | FinanceCategoryFilters) {
   return params;
 }
 
-export interface FinanceChange {
-  percentage: number | null;
-  amount: number | null;
-}
-
-export interface FinancePaymentMethodBreakdown {
-  value: string;
-  label: string;
-  amount: number;
-  percentage: number;
+export interface FinanceMethodTotals {
+  total: number;
+  cash: number;
+  card: number;
+  unknown: number;
+  count: number;
 }
 
 export interface FinanceSummary {
   date_from: string;
   date_to: string;
-  total_income: number;
-  total_expense: number;
+  income: FinanceMethodTotals;
+  expense: FinanceMethodTotals;
   balance: number;
-  income_change: FinanceChange;
-  expense_change: FinanceChange;
-  income_count: number;
-  expense_count: number;
-  payment_methods: FinancePaymentMethodBreakdown[];
+  cash_balance: number;
+  card_balance: number;
+  by_source: {
+    source: FinanceSource;
+    label: string;
+    type: "kirim" | "chiqim";
+    amount: number;
+    count: number;
+  }[];
+  expense_by_category: { category: string; amount: number }[];
+  series: { period: string; income: number; expense: number }[];
+  series_unit: "day" | "month";
+  unpaid: {
+    count: number;
+    amount: number;
+    items: {
+      id: string;
+      patient_id: string;
+      patient: string;
+      doctor: string | null;
+      date: string;
+      amount: number;
+    }[];
+  };
 }
 
 export interface FinanceTransaction {
   id: string;
+  source: FinanceSource;
+  source_display: string;
   type: "kirim" | "chiqim";
   date: string;
   reference: string | null;
   title: string;
-  subtitle: string;
-  doctor: string | null;
+  subtitle: string | null;
   category: string | null;
-  payment_method: string | null;
-  payment_method_display: string | null;
-  cashier: string | null;
+  doctor: string | null;
+  payment_method: CashOrCard | "unknown";
+  payment_method_display: string;
   amount: number;
-  status: string;
-  status_display: string;
-}
-
-export interface FinanceTransactionsMeta {
-  total_pages: number;
-  total_items: number;
-  current_page: number;
-  income_count: number;
-  expense_count: number;
-  total_income_amount: number;
-  total_expense_amount: number;
-  balance: number;
+  created_by: string | null;
 }
 
 export interface FinanceTransactionsResponse {
   success: boolean;
   data: {
     results: FinanceTransaction[];
-    meta: FinanceTransactionsMeta;
+    meta: {
+      total_items: number;
+      total_pages: number;
+      current_page: number;
+      income_amount: number;
+      expense_amount: number;
+      balance: number;
+    };
   };
 }
 
@@ -488,7 +498,7 @@ export interface CreateExpensePayload {
   category: string;
   title: string;
   amount: number;
-  payment_method?: string;
+  payment_method: CashOrCard;
   date?: string;
 }
 
@@ -590,6 +600,8 @@ export interface AdmissionDetail extends AdmissionListItem {
   doctor_id: string | null;
   daily_price: number;
   discharge_notes: string | null;
+  payment_method: CashOrCard | null;
+  paid_amount: number | null;
   created_by: string | null;
   notes: { id: string; text: string; created_by: string | null; created_at: string }[];
   services: {
@@ -655,6 +667,7 @@ export interface StockMovement {
   balance_after: number;
   unit_price: number | null;
   total: number | null;
+  payment_method: CashOrCard | null;
   supplier: string | null;
   expiry_date: string | null;
   note: string | null;
@@ -686,6 +699,7 @@ export interface StockMovementPayload {
   type: StockMovementType;
   quantity: number;
   unit_price?: number | null;
+  payment_method?: CashOrCard | null;
   supplier?: string;
   expiry_date?: string | null;
   note?: string;
@@ -1313,6 +1327,18 @@ export const AvitcenaAdmin = {
     return response.data;
   },
 
+  payVisit: async (
+    patientId: string,
+    visitId: string,
+    payment_method: CashOrCard
+  ): Promise<any> => {
+    const response = await api.post(
+      `${baseApi}/v1/patients/${patientId}/visits/${visitId}/payment`,
+      { payment_method }
+    );
+    return response.data;
+  },
+
   // ---- Moliya (finance) ----
 
   financeSummary: async (
@@ -1551,6 +1577,7 @@ export const AvitcenaAdmin = {
       discharged_at?: string;
       discharge_diagnosis?: string;
       discharge_notes?: string;
+      payment_method: CashOrCard;
     }
   ): Promise<{ success: boolean; data: AdmissionDetail }> => {
     const response = await api.post(

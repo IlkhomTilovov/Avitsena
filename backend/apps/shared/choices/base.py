@@ -26,6 +26,13 @@ class PaymentMethod(TextChoices):
     TRANSFER = 'transfer', _("O'tkazma")
 
 
+# Klinika hozir faqat shu ikki turni qabul qiladi; qolganlari eski yozuvlar uchun saqlangan
+PAYMENT_METHODS_IN_USE = (
+    (PaymentMethod.CASH, 'Naqd'),
+    (PaymentMethod.CARD, 'Karta'),
+)
+
+
 class ExpenseCategory(TextChoices):
     MEDICINE = 'medicine', _('Dori va materiallar')
     EQUIPMENT = 'equipment', _("Jihozlar ta'miri")

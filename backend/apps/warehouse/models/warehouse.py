@@ -3,7 +3,7 @@ from django.db import models
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 from apps.shared.models import AbstractBaseModel
-from apps.shared.choices import WarehouseCategory, StockMovementType
+from apps.shared.choices import PaymentMethod, WarehouseCategory, StockMovementType
 
 
 class WarehouseItem(AbstractBaseModel):
@@ -94,6 +94,14 @@ class StockMovement(AbstractBaseModel):
     )
 
     unit_price = models.PositiveIntegerField(
+        blank=True,
+        null=True
+    )
+
+    # Narxi bor kirim Moliyada ombor xaridi (chiqim) bo'lib hisoblanadi
+    payment_method = models.CharField(
+        max_length=15,
+        choices=PaymentMethod.choices,
         blank=True,
         null=True
     )

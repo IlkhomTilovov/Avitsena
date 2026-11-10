@@ -67,13 +67,11 @@ class Expense(AbstractBaseModel):
         related_name='expenses'
     )
 
+    # Kategoriya turi yozuv kirim yoki chiqim ekanini belgilaydi
     category = models.ForeignKey(
         FinanceCategory,
         on_delete=models.PROTECT,
-        related_name='expenses',
-        limit_choices_to={
-            'type': FinanceTransactionType.CHIQIM
-        }
+        related_name='expenses'
     )
 
     title = models.CharField(

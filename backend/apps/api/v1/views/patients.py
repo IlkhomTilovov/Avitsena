@@ -14,11 +14,14 @@ from apps.api.v1.serializers import (
     VisitRecipeserializer,
     VisitRecipeCreateSerializer,
     TodayVisitListSerializer,
-    PatientAnalysisSerializer
+    PatientAnalysisSerializer,
+    VisitPaymentSerializer
 )
 from apps.patients.models import Patient, PatientVisit, PatientVisitRecipe, PatientAnalysis
 from rest_framework.exceptions import NotFound
 from apps.shared.choices import StatusTextChoices, UserRole
+from apps.shared.permissions import IsRegistratorOrAdmin
+from apps.patients.choices import PatientVisitStatus
 from django.db.models import Q, OuterRef, Subquery, DateField, CharField, Count, Exists
 from django.db.models.functions import Cast
 from django.utils import timezone
@@ -973,3 +976,61 @@ class TodayVisitsView(APIView):
         )
 
         return paginator.get_paginated_response(serializer.data)
+
+
+class VisitPaymentView(APIView):
+
+    permission_classes = (IsRegistratorOrAdmin, )
+
+    @extend_schema(
+        tags=['patients'],
+        request=VisitPaymentSerializer,
+        responses={status.HTTP_200_OK: PatientVisitDetailSerializer}
+    )
+    def post(self, request, id, visit_id):
+
+        try:
+
+            visit = PatientVisit.objects \
+                .select_related('doctor', 'patient') \
+                .prefetch_related('services', 'recipes') \
+                .get(id=visit_id, patient_id=id, patient__clinic=request.user.clinic)
+
+        except PatientVisit.DoesNotExist:
+
+            raise NotFound('Patient visit not found')
+
+        if visit.payment_method:
+
+            return CustomResponse(
+                success=False,
+                message="Bu qabul uchun to'lov allaqachon qabul qilingan.",
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if visit.status == PatientVisitStatus.CANCELLED:
+
+            return CustomResponse(
+                success=False,
+                message="Bekor qilingan qabul uchun to'lov olinmaydi.",
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        serializer = VisitPaymentSerializer(data=request.data)
+
+        if not serializer.is_valid():
+
+            return CustomResponse(
+                success=False,
+                message="To'lov turini tanlang: naqd yoki karta.",
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        visit.payment_method = serializer.validated_data['payment_method']
+        visit.cashier = request.user
+        visit.paid_at = timezone.now()
+        visit.save(update_fields=['payment_method', 'cashier', 'paid_at', 'updated_at'])
+
+        return CustomResponse(
+            data=PatientVisitDetailSerializer(visit, context={'request': request}).data
+        )

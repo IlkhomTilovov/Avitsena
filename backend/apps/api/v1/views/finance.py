@@ -1,5 +1,4 @@
 import csv
-import uuid
 from datetime import datetime, timedelta
 
 from django.core.exceptions import ValidationError
@@ -22,14 +21,24 @@ from apps.api.v1.serializers import (
 )
 from apps.clinics.models import Clinic
 from apps.finance.models import Expense, FinanceCategory
+from apps.inpatient.models import Admission
+from apps.patients.choices import PatientVisitStatus
 from apps.patients.models import PatientVisit
 from apps.services.models import Service, ServiceCategory
-from apps.shared.choices import PaymentMethod, FinanceTransactionType, FinanceCategoryColor
+from apps.shared.choices import (
+    AdmissionStatus,
+    ExpenseStatus,
+    FinanceCategoryColor,
+    FinanceTransactionType,
+    PaymentMethod,
+    StockMovementType
+)
 from apps.shared.pagination import CustomPagination
 from apps.shared.permissions import IsSuperAdmin
 from apps.shared.response import CustomResponse
 from apps.shared.utils import get_current_month_data
 from apps.users.models import CustomUser
+from apps.warehouse.models import StockMovement
 
 
 DEFAULT_KIRIM_CATEGORIES = [
@@ -105,14 +114,26 @@ FINANCE_FILTER_PARAMETERS = [
     OpenApiParameter(name='date_from', description='YYYY-MM-DD', location=OpenApiParameter.QUERY, type=OpenApiTypes.STR),
     OpenApiParameter(name='date_to', description='YYYY-MM-DD', location=OpenApiParameter.QUERY, type=OpenApiTypes.STR),
     OpenApiParameter(name='type', description='kirim | chiqim', location=OpenApiParameter.QUERY, type=OpenApiTypes.STR),
-    OpenApiParameter(name='doctor', description='Comma separated doctor ids', location=OpenApiParameter.QUERY, type=OpenApiTypes.STR),
-    OpenApiParameter(name='service', description='Comma separated service ids', location=OpenApiParameter.QUERY, type=OpenApiTypes.STR),
-    OpenApiParameter(name='payment_method', description='Comma separated payment methods', location=OpenApiParameter.QUERY, type=OpenApiTypes.STR),
-    OpenApiParameter(name='category', description='Service-category id (income) or finance-category id (expense)', location=OpenApiParameter.QUERY, type=OpenApiTypes.STR),
-    OpenApiParameter(name='status', description='Transaction status', location=OpenApiParameter.QUERY, type=OpenApiTypes.STR),
-    OpenApiParameter(name='cashier', description='Comma separated cashier ids', location=OpenApiParameter.QUERY, type=OpenApiTypes.STR),
+    OpenApiParameter(name='payment_method', description='cash | card', location=OpenApiParameter.QUERY, type=OpenApiTypes.STR),
+    OpenApiParameter(name='source', description='visit | inpatient | manual | warehouse', location=OpenApiParameter.QUERY, type=OpenApiTypes.STR),
     OpenApiParameter(name='search', description='Search', location=OpenApiParameter.QUERY, type=OpenApiTypes.STR),
 ]
+
+SOURCE_LABELS = {
+    'visit': 'Qabullar',
+    'inpatient': 'Statsionar',
+    'manual': "Qo'lda kiritilgan",
+    'warehouse': 'Ombor xaridlari',
+}
+
+METHOD_LABELS = {
+    'cash': 'Naqd',
+    'card': 'Karta',
+    'unknown': 'Belgilanmagan',
+}
+
+# Kunlik grafik shundan uzun davrda oylik ko'rinishga o'tadi
+DAILY_SERIES_MAX_DAYS = 62
 
 
 def _parse_date(value):
@@ -139,121 +160,19 @@ def _get_date_range(request):
     return date_from, date_to
 
 
-def _csv_list(request, key):
+def _normalize_method(value):
 
-    value = request.query_params.get(key)
-
+    # Klinikada ikki tur: naqd va karta. Eski Click/Payme va o'tkazma karta (naqdsiz) hisoblanadi
     if not value:
 
-        return []
+        return 'unknown'
 
-    return [item.strip() for item in value.split(',') if item.strip()]
+    return 'cash' if value == PaymentMethod.CASH else 'card'
 
 
-def _get_finance_querysets(clinic, request):
+def _start_of_day(value):
 
-    date_from, date_to = _get_date_range(request)
-
-    params = request.query_params
-
-    income_qs = PatientVisit.objects \
-        .filter(
-            patient__clinic=clinic,
-            created_at__date__range=(date_from, date_to)
-        ) \
-        .select_related('patient', 'doctor', 'cashier') \
-        .prefetch_related('services')
-
-    expense_qs = Expense.objects \
-        .filter(
-            clinic=clinic,
-            date__range=(date_from, date_to)
-        ) \
-        .select_related('created_by', 'category')
-
-    doctor_ids = _csv_list(request, 'doctor')
-
-    if doctor_ids:
-
-        income_qs = income_qs.filter(doctor_id__in=doctor_ids)
-        expense_qs = expense_qs.none()
-
-    service_ids = _csv_list(request, 'service')
-
-    if service_ids:
-
-        income_qs = income_qs.filter(services__id__in=service_ids)
-        expense_qs = expense_qs.none()
-
-    payment_methods = _csv_list(request, 'payment_method')
-
-    if payment_methods:
-
-        income_qs = income_qs.filter(payment_method__in=payment_methods)
-        expense_qs = expense_qs.filter(payment_method__in=payment_methods)
-
-    status_param = params.get('status')
-
-    if status_param:
-
-        income_qs = income_qs.filter(status=status_param)
-        expense_qs = expense_qs.filter(status=status_param)
-
-    cashier_ids = _csv_list(request, 'cashier')
-
-    if cashier_ids:
-
-        income_qs = income_qs.filter(cashier_id__in=cashier_ids)
-        expense_qs = expense_qs.filter(created_by_id__in=cashier_ids)
-
-    category = params.get('category')
-
-    if category:
-
-        try:
-
-            category_uuid = uuid.UUID(str(category))
-
-        except (ValueError, TypeError):
-
-            income_qs = income_qs.none()
-            expense_qs = expense_qs.none()
-
-        else:
-
-            # category may be a service-category id (income side) or a
-            # FinanceCategory id (expense side); each filter is a safe
-            # no-op on the model it doesn't apply to.
-            income_qs = income_qs.filter(services__category_id=category_uuid)
-            expense_qs = expense_qs.filter(category_id=category_uuid)
-
-    search = params.get('search')
-
-    if search:
-
-        income_query = Q()
-
-        for search_term in search.split():
-
-            term_query = (
-                Q(patient__first_name__icontains=search_term) |
-                Q(patient__last_name__icontains=search_term) |
-                Q(patient__middle_name__icontains=search_term) |
-                Q(queue__icontains=search_term)
-            )
-
-            # The receipt reference shown in the table: see _visit_reference
-            if search_term.upper().startswith('AV-'):
-
-                term_query |= Q(id__istartswith=search_term[3:])
-
-            income_query &= term_query
-
-        income_qs = income_qs.filter(income_query)
-
-        expense_qs = expense_qs.filter(title__icontains=search)
-
-    return income_qs.distinct(), expense_qs, date_from, date_to
+    return timezone.make_aware(datetime.combine(value, datetime.min.time()))
 
 
 def _visit_reference(visit_id) -> str:
@@ -261,157 +180,311 @@ def _visit_reference(visit_id) -> str:
     return f"AV-{str(visit_id).split('-')[0][:5].upper()}"
 
 
-VISIT_STATUS_LABELS_UZ = {
-    'pending': 'Kutilmoqda',
-    'in_progress': 'Jarayonda',
-    'completed': 'Bajarildi',
-    'cancelled': 'Bekor qilindi',
-}
+def _fio(patient) -> str:
 
-
-def _visit_to_row(visit) -> dict:
-
-    patient = visit.patient
-
-    fio = ' '.join(
+    return ' '.join(
         part for part in [patient.last_name, patient.first_name, patient.middle_name] if part
     )
 
-    services = list(visit.services.all())
+
+def _row(**kwargs) -> dict:
+
+    method = _normalize_method(kwargs.pop('raw_method'))
 
     return {
-        'id': str(visit.id),
-        'type': 'kirim',
-        'date': visit.created_at,
-        'reference': _visit_reference(visit.id),
-        'title': fio,
-        'subtitle': "Qabul to'lovlari",
-        'doctor': getattr(visit.doctor, 'fio', None),
-        'category': ', '.join(service.name for service in services) or None,
-        'payment_method': visit.payment_method,
-        'payment_method_display': visit.get_payment_method_display() if visit.payment_method else None,
-        'cashier': getattr(visit.cashier, 'fio', None),
-        'amount': visit.total_price,
-        'status': visit.status,
-        'status_display': VISIT_STATUS_LABELS_UZ.get(visit.status, visit.get_status_display()),
-    }
-
-
-def _expense_to_row(expense) -> dict:
-
-    return {
-        'id': str(expense.id),
-        'type': 'chiqim',
-        'date': timezone.make_aware(datetime.combine(expense.date, datetime.min.time())),
         'reference': None,
-        'title': expense.title,
-        'subtitle': "Qo'lda kiritilgan chiqim",
+        'subtitle': None,
         'doctor': None,
-        'category': expense.category.name,
-        'payment_method': expense.payment_method,
-        'payment_method_display': expense.get_payment_method_display() if expense.payment_method else None,
-        'cashier': getattr(expense.created_by, 'fio', None),
-        'amount': expense.amount,
-        'status': expense.status,
-        'status_display': expense.get_status_display(),
+        'created_by': None,
+        'category_id': None,
+        **kwargs,
+        'source_display': SOURCE_LABELS[kwargs['source']],
+        'payment_method': method,
+        'payment_method_display': METHOD_LABELS[method],
     }
 
 
-def _build_rows(income_qs, expense_qs, type_param):
+def _collect_rows(clinic, date_from, date_to) -> list:
 
     rows = []
 
-    if type_param != 'chiqim':
+    # Qabullar: to'lov qabul qilingan paytda kirim bo'ladi
+    visits = PatientVisit.objects \
+        .filter(patient__clinic=clinic, payment_method__isnull=False) \
+        .exclude(status=PatientVisitStatus.CANCELLED) \
+        .filter(
+            Q(paid_at__date__range=(date_from, date_to)) |
+            Q(paid_at__isnull=True, created_at__date__range=(date_from, date_to))
+        ) \
+        .select_related('patient', 'doctor', 'cashier') \
+        .prefetch_related('services')
 
-        rows.extend(_visit_to_row(visit) for visit in income_qs.order_by('-created_at'))
+    for visit in visits:
 
-    if type_param != 'kirim':
+        rows.append(_row(
+            id=str(visit.id),
+            source='visit',
+            type=FinanceTransactionType.KIRIM,
+            date=visit.paid_at or visit.created_at,
+            reference=_visit_reference(visit.id),
+            title=_fio(visit.patient),
+            subtitle=', '.join(service.name for service in visit.services.all()) or 'Qabul',
+            category="Qabul to'lovlari",
+            doctor=getattr(visit.doctor, 'fio', None),
+            created_by=getattr(visit.cashier, 'fio', None),
+            amount=visit.total_price,
+            raw_method=visit.payment_method
+        ))
 
-        rows.extend(_expense_to_row(expense) for expense in expense_qs.order_by('-date', '-created_at'))
+    # Statsionar: chiqarishda yopilgan hisob
+    admissions = Admission.objects \
+        .filter(
+            clinic=clinic,
+            status=AdmissionStatus.DISCHARGED,
+            payment_method__isnull=False,
+            discharged_at__date__range=(date_from, date_to)
+        ) \
+        .select_related('patient', 'bed__room', 'doctor', 'created_by')
+
+    for admission in admissions:
+
+        rows.append(_row(
+            id=str(admission.id),
+            source='inpatient',
+            type=FinanceTransactionType.KIRIM,
+            date=admission.discharged_at,
+            title=_fio(admission.patient),
+            subtitle=f'{admission.bed.room.name} xona, {admission.days} kun',
+            category='Statsionar',
+            doctor=getattr(admission.doctor, 'fio', None),
+            created_by=getattr(admission.created_by, 'fio', None),
+            amount=admission.paid_amount or 0,
+            raw_method=admission.payment_method
+        ))
+
+    # Qo'lda kiritilgan kirim va chiqimlar
+    entries = Expense.objects \
+        .filter(clinic=clinic, date__range=(date_from, date_to)) \
+        .exclude(status=ExpenseStatus.CANCELLED) \
+        .select_related('category', 'created_by')
+
+    for entry in entries:
+
+        rows.append(_row(
+            id=str(entry.id),
+            source='manual',
+            type=entry.category.type,
+            date=_start_of_day(entry.date),
+            title=entry.title,
+            subtitle="Qo'lda kiritilgan",
+            category=entry.category.name,
+            category_id=str(entry.category_id),
+            created_by=getattr(entry.created_by, 'fio', None),
+            amount=entry.amount,
+            raw_method=entry.payment_method
+        ))
+
+    # Ombor: narxi kiritilgan kirim xarid (chiqim) hisoblanadi
+    purchases = StockMovement.objects \
+        .filter(
+            clinic=clinic,
+            type=StockMovementType.IN,
+            unit_price__gt=0,
+            date__range=(date_from, date_to)
+        ) \
+        .select_related('item', 'created_by')
+
+    for movement in purchases:
+
+        rows.append(_row(
+            id=str(movement.id),
+            source='warehouse',
+            type=FinanceTransactionType.CHIQIM,
+            date=_start_of_day(movement.date),
+            title=movement.item.name,
+            subtitle=movement.supplier or 'Ombor xaridi',
+            category='Ombor xaridlari',
+            created_by=getattr(movement.created_by, 'fio', None),
+            amount=int(movement.change * movement.unit_price),
+            raw_method=movement.payment_method
+        ))
 
     rows.sort(key=lambda row: row['date'], reverse=True)
 
     return rows
 
 
+def _filter_rows(rows, params) -> list:
+
+    type_param = params.get('type')
+    method = params.get('payment_method')
+    source = params.get('source')
+    search_terms = (params.get('search') or '').lower().split()
+
+    def matches(row):
+
+        if type_param and row['type'] != type_param:
+
+            return False
+
+        if method and row['payment_method'] != method:
+
+            return False
+
+        if source and row['source'] != source:
+
+            return False
+
+        if search_terms:
+
+            haystack = ' '.join(
+                str(row.get(key) or '')
+                for key in ('title', 'subtitle', 'category', 'reference', 'doctor', 'created_by')
+            ).lower()
+
+            return all(term in haystack for term in search_terms)
+
+        return True
+
+    return [row for row in rows if matches(row)]
+
+
+def _totals(rows, type_value) -> dict:
+
+    totals = {'total': 0, 'cash': 0, 'card': 0, 'unknown': 0, 'count': 0}
+
+    for row in rows:
+
+        if row['type'] != type_value:
+
+            continue
+
+        totals['total'] += row['amount']
+        totals[row['payment_method']] += row['amount']
+        totals['count'] += 1
+
+    return totals
+
+
+def _series(rows, date_from, date_to) -> list:
+
+    monthly = (date_to - date_from).days + 1 > DAILY_SERIES_MAX_DAYS
+
+    def key_of(value):
+
+        return value.strftime('%Y-%m') if monthly else value.isoformat()
+
+    buckets = {}
+    current = date_from
+
+    while current <= date_to:
+
+        buckets.setdefault(key_of(current), {'income': 0, 'expense': 0})
+        current += timedelta(days=1)
+
+    for row in rows:
+
+        key = key_of(timezone.localtime(row['date']).date())
+
+        if key in buckets:
+
+            field = 'income' if row['type'] == FinanceTransactionType.KIRIM else 'expense'
+            buckets[key][field] += row['amount']
+
+    return [
+        {'period': key, 'income': value['income'], 'expense': value['expense']}
+        for key, value in buckets.items()
+    ]
+
+
+def _public_row(row) -> dict:
+
+    return {key: value for key, value in row.items() if key != 'category_id'}
+
+
 class FinanceSummaryView(APIView):
 
     permission_classes = (IsSuperAdmin, )
 
-    @extend_schema(tags=['finance'], parameters=FINANCE_FILTER_PARAMETERS)
+    @extend_schema(tags=['finance'], parameters=FINANCE_FILTER_PARAMETERS[:3])
     def get(self, request):
 
         clinic = _get_clinic(request)
 
-        income_qs, expense_qs, date_from, date_to = _get_finance_querysets(clinic, request)
+        date_from, date_to = _get_date_range(request)
 
-        total_income = income_qs.aggregate(total=Sum('total_price'))['total'] or 0
+        rows = _collect_rows(clinic, date_from, date_to)
 
-        total_expense = expense_qs.aggregate(total=Sum('amount'))['total'] or 0
+        income = _totals(rows, FinanceTransactionType.KIRIM)
+        expense = _totals(rows, FinanceTransactionType.CHIQIM)
 
-        period_length = (date_to - date_from).days + 1
+        by_source = {}
 
-        prev_date_to = date_from - timedelta(days=1)
+        for row in rows:
 
-        prev_date_from = prev_date_to - timedelta(days=period_length - 1)
+            key = (row['source'], row['type'])
+            bucket = by_source.setdefault(key, {
+                'source': row['source'],
+                'label': row['source_display'],
+                'type': row['type'],
+                'amount': 0,
+                'count': 0
+            })
+            bucket['amount'] += row['amount']
+            bucket['count'] += 1
 
-        prev_income_qs = PatientVisit.objects.filter(
-            patient__clinic=clinic,
-            created_at__date__range=(prev_date_from, prev_date_to)
-        )
+        expense_by_category = {}
 
-        prev_expense_qs = Expense.objects.filter(
-            clinic=clinic,
-            date__range=(prev_date_from, prev_date_to)
-        )
+        for row in rows:
 
-        prev_total_income = prev_income_qs.aggregate(total=Sum('total_price'))['total'] or 0
+            if row['type'] == FinanceTransactionType.CHIQIM:
 
-        prev_total_expense = prev_expense_qs.aggregate(total=Sum('amount'))['total'] or 0
+                expense_by_category[row['category']] = expense_by_category.get(row['category'], 0) + row['amount']
 
-        def change(curr, prev):
+        unpaid_qs = PatientVisit.objects \
+            .filter(
+                patient__clinic=clinic,
+                payment_method__isnull=True,
+                created_at__date__range=(date_from, date_to)
+            ) \
+            .exclude(status=PatientVisitStatus.CANCELLED) \
+            .select_related('patient', 'doctor') \
+            .order_by('-created_at')
 
-            if not prev:
+        unpaid_total = unpaid_qs.aggregate(total=Sum('total_price'), count=Count('id'))
 
-                return {'percentage': None, 'amount': curr}
-
-            return {'percentage': round((curr - prev) / prev * 100, 2), 'amount': None}
-
-        payment_breakdown_qs = income_qs \
-            .values('payment_method') \
-            .annotate(total=Sum('total_price'))
-
-        payment_breakdown = {
-            item['payment_method'] or 'unknown': item['total'] or 0
-            for item in payment_breakdown_qs
-        }
-
-        payment_breakdown_total = sum(payment_breakdown.values()) or 1
-
-        payment_methods = [
-            {
-                'value': value,
-                'label': label,
-                'amount': payment_breakdown.get(value, 0),
-                'percentage': round(payment_breakdown.get(value, 0) / payment_breakdown_total * 100, 1)
-            }
-            for value, label in PaymentMethod.choices
-        ]
-
-        data = {
+        return CustomResponse(data={
             'date_from': date_from,
             'date_to': date_to,
-            'total_income': total_income,
-            'total_expense': total_expense,
-            'balance': total_income - total_expense,
-            'income_change': change(total_income, prev_total_income),
-            'expense_change': change(total_expense, prev_total_expense),
-            'income_count': income_qs.count(),
-            'expense_count': expense_qs.count(),
-            'payment_methods': payment_methods
-        }
-
-        return CustomResponse(data=data)
+            'income': income,
+            'expense': expense,
+            'balance': income['total'] - expense['total'],
+            # Davr ichidagi naqd va karta oqimi: kirim minus chiqim
+            'cash_balance': income['cash'] - expense['cash'],
+            'card_balance': income['card'] - expense['card'],
+            'by_source': sorted(by_source.values(), key=lambda item: -item['amount']),
+            'expense_by_category': sorted(
+                [{'category': name, 'amount': amount} for name, amount in expense_by_category.items()],
+                key=lambda item: -item['amount']
+            ),
+            'series': _series(rows, date_from, date_to),
+            'series_unit': 'month' if (date_to - date_from).days + 1 > DAILY_SERIES_MAX_DAYS else 'day',
+            'unpaid': {
+                'count': unpaid_total['count'] or 0,
+                'amount': unpaid_total['total'] or 0,
+                'items': [
+                    {
+                        'id': str(visit.id),
+                        'patient_id': str(visit.patient_id),
+                        'patient': _fio(visit.patient),
+                        'doctor': getattr(visit.doctor, 'fio', None),
+                        'date': visit.created_at,
+                        'amount': visit.total_price
+                    }
+                    for visit in unpaid_qs[:20]
+                ]
+            }
+        })
 
 
 class FinanceTransactionsListView(APIView):
@@ -429,15 +502,13 @@ class FinanceTransactionsListView(APIView):
 
         clinic = _get_clinic(request)
 
-        income_qs, expense_qs, date_from, date_to = _get_finance_querysets(clinic, request)
+        date_from, date_to = _get_date_range(request)
 
-        type_param = request.query_params.get('type')
-
-        rows = _build_rows(income_qs, expense_qs, type_param)
+        rows = _filter_rows(_collect_rows(clinic, date_from, date_to), request.query_params)
 
         try:
 
-            page = int(request.query_params.get('page', 1))
+            page = max(int(request.query_params.get('page', 1)), 1)
 
         except (TypeError, ValueError):
 
@@ -445,37 +516,26 @@ class FinanceTransactionsListView(APIView):
 
         try:
 
-            per_page = min(int(request.query_params.get('per_page', 16)), 100)
+            per_page = min(max(int(request.query_params.get('per_page', 15)), 1), 100)
 
         except (TypeError, ValueError):
 
-            per_page = 16
+            per_page = 15
 
-        total_items = len(rows)
-
-        total_pages = max((total_items + per_page - 1) // per_page, 1)
+        income = _totals(rows, FinanceTransactionType.KIRIM)
+        expense = _totals(rows, FinanceTransactionType.CHIQIM)
 
         start = (page - 1) * per_page
 
-        end = start + per_page
-
-        page_rows = rows[start:end]
-
-        total_income_amount = income_qs.aggregate(total=Sum('total_price'))['total'] or 0
-
-        total_expense_amount = expense_qs.aggregate(total=Sum('amount'))['total'] or 0
-
         return CustomResponse(data={
-            'results': page_rows,
+            'results': [_public_row(row) for row in rows[start:start + per_page]],
             'meta': {
-                'total_pages': total_pages,
-                'total_items': total_items,
+                'total_items': len(rows),
+                'total_pages': max((len(rows) + per_page - 1) // per_page, 1),
                 'current_page': page,
-                'income_count': income_qs.count(),
-                'expense_count': expense_qs.count(),
-                'total_income_amount': total_income_amount,
-                'total_expense_amount': total_expense_amount,
-                'balance': total_income_amount - total_expense_amount
+                'income_amount': income['total'],
+                'expense_amount': expense['total'],
+                'balance': income['total'] - expense['total']
             }
         })
 
@@ -489,11 +549,9 @@ class FinanceExportView(APIView):
 
         clinic = _get_clinic(request)
 
-        income_qs, expense_qs, date_from, date_to = _get_finance_querysets(clinic, request)
+        date_from, date_to = _get_date_range(request)
 
-        type_param = request.query_params.get('type')
-
-        rows = _build_rows(income_qs, expense_qs, type_param)
+        rows = _filter_rows(_collect_rows(clinic, date_from, date_to), request.query_params)
 
         response = HttpResponse(content_type='text/csv; charset=utf-8')
 
@@ -501,26 +559,27 @@ class FinanceExportView(APIView):
 
         response['Content-Disposition'] = f'attachment; filename="{filename}"'
 
-        response.write('﻿')
+        response.write('\ufeff')
 
         writer = csv.writer(response, delimiter=';')
 
         writer.writerow([
-            'Sana', 'Turi', 'Bemor/Izoh', 'Shifokor',
-            'Kategoriya/Xizmat', "To'lov usuli", 'Summa', 'Holat'
+            'Sana', 'Turi', 'Manba', 'Nomi', 'Tafsilot', 'Kategoriya',
+            "To'lov turi", 'Summa', 'Xodim'
         ])
 
         for row in rows:
 
             writer.writerow([
                 timezone.localtime(row['date']).strftime('%d.%m.%Y %H:%M'),
-                'Kirim' if row['type'] == 'kirim' else 'Chiqim',
+                'Kirim' if row['type'] == FinanceTransactionType.KIRIM else 'Chiqim',
+                row['source_display'],
                 row['title'],
-                row['doctor'] or '',
+                row['subtitle'] or '',
                 row['category'] or '',
-                row['payment_method_display'] or '',
+                row['payment_method_display'],
                 row['amount'],
-                row['status_display'],
+                row['created_by'] or '',
             ])
 
         return response
@@ -604,17 +663,19 @@ class FinanceCategoryListCreateView(APIView):
 
         categories = list(queryset)
 
-        income_total = PatientVisit.objects \
-            .filter(patient__clinic=clinic, created_at__date__range=(date_from, date_to)) \
-            .aggregate(total=Sum('total_price'), count=Count('id'))
+        rows = _collect_rows(clinic, date_from, date_to)
 
-        expense_totals = {
-            item['category_id']: item
-            for item in Expense.objects
-            .filter(clinic=clinic, date__range=(date_from, date_to))
-            .values('category_id')
-            .annotate(total=Sum('amount'), count=Count('id'))
-        }
+        system_income = [row for row in rows if row['source'] in ('visit', 'inpatient')]
+
+        manual_totals = {}
+
+        for row in rows:
+
+            if row['category_id']:
+
+                totals = manual_totals.setdefault(row['category_id'], {'total': 0, 'count': 0})
+                totals['total'] += row['amount']
+                totals['count'] += 1
 
         data = []
 
@@ -622,19 +683,14 @@ class FinanceCategoryListCreateView(APIView):
 
             if category.is_system:
 
-                amount = income_total['total'] or 0
-                count = income_total['count'] or 0
-
-            elif category.type == FinanceTransactionType.CHIQIM:
-
-                totals = expense_totals.get(category.id)
-                amount = totals['total'] if totals else 0
-                count = totals['count'] if totals else 0
+                amount = sum(row['amount'] for row in system_income)
+                count = len(system_income)
 
             else:
 
-                amount = 0
-                count = 0
+                totals = manual_totals.get(str(category.id), {'total': 0, 'count': 0})
+                amount = totals['total']
+                count = totals['count']
 
             item = self.serializer_class(category).data
             item['amount'] = amount

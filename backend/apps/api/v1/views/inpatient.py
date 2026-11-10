@@ -427,6 +427,9 @@ class AdmissionDischargeView(AdmissionObjectMixin, APIView):
         admission.discharged_at = data.get('discharged_at') or timezone.now()
         admission.discharge_diagnosis = data.get('discharge_diagnosis') or None
         admission.discharge_notes = data.get('discharge_notes') or None
+        admission.payment_method = data['payment_method']
+        # Hisob chiqish vaqtida yopiladi, shu summa to'langan deb yoziladi
+        admission.paid_amount = admission.total
         admission.save()
 
         return self.detail_response(admission)

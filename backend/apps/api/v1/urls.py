@@ -37,6 +37,7 @@ from apps.api.v1.views import (
     VisitRecipeCreateView,
     VisitRecipeDetailView,
     TodayVisitsView,
+    VisitPaymentView,
 
     #finance
     FinanceSummaryView,
@@ -113,6 +114,7 @@ urlpatterns = [
     path('patients/<uuid:id>/analyses', PatientAnalysisListCreateView.as_view(), name='patient_analysis_list_create'),
     path('patients/<uuid:id>/visits', PatientVisitListCreateView.as_view(), name='patient_visit_lis_create'),
     path('patients/<uuid:id>/visits/<uuid:visit_id>', PatientVisitDetailView.as_view(), name='patient_visit_detail'),
+    path('patients/<uuid:id>/visits/<uuid:visit_id>/payment', VisitPaymentView.as_view(), name='patient_visit_payment'),
 
     # finance
     path('finance/summary', FinanceSummaryView.as_view(), name='finance_summary'),

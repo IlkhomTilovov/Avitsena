@@ -148,6 +148,7 @@ function MovementModal({
         type,
         quantity: values.quantity,
         unit_price: type === "in" ? values.unit_price ?? null : undefined,
+        payment_method: type === "in" && values.unit_price ? values.payment_method : undefined,
         supplier: type === "in" ? values.supplier?.trim() : undefined,
         expiry_date:
           type === "in" && values.expiry_date
@@ -236,6 +237,30 @@ function MovementModal({
                 className="!w-full"
                 formatter={(value) => `${value ?? ""}`.replace(/\B(?=(\d{3})+(?!\d))/g, " ")}
                 parser={(value) => Number((value || "").replace(/\s/g, ""))}
+              />
+            </Form.Item>
+            <Form.Item
+              name="payment_method"
+              label="To'lov turi"
+              dependencies={["unit_price"]}
+              extra="Narx kiritilsa, xarid Moliyada chiqim bo'lib yoziladi"
+              rules={[
+                ({ getFieldValue }) => ({
+                  validator: (_, value) =>
+                    !getFieldValue("unit_price") || value
+                      ? Promise.resolve()
+                      : Promise.reject(new Error("Xarid uchun to'lov turini tanlang")),
+                }),
+              ]}
+            >
+              <Select
+                aria-label="To'lov turi"
+                allowClear
+                placeholder="Naqd yoki karta"
+                options={[
+                  { value: "cash", label: "Naqd" },
+                  { value: "card", label: "Karta" },
+                ]}
               />
             </Form.Item>
             <Form.Item name="supplier" label="Yetkazib beruvchi">

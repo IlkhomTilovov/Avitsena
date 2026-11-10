@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from apps.finance.models import Expense, FinanceCategory
-from apps.shared.choices import FinanceTransactionType
+from apps.shared.choices import FinanceTransactionType, PAYMENT_METHODS_IN_USE
 
 
 class FinanceCategorySerializer(serializers.ModelSerializer):
@@ -118,11 +118,14 @@ class ExpenseSerializer(serializers.ModelSerializer):
 
     created_by = serializers.SerializerMethodField()
 
+    type = serializers.CharField(source='category.type', read_only=True)
+
     class Meta:
 
         model = Expense
         fields = (
             'id',
+            'type',
             'category',
             'category_name',
             'category_icon',
@@ -144,6 +147,11 @@ class ExpenseSerializer(serializers.ModelSerializer):
 
 
 class ExpenseCreateSerializer(serializers.ModelSerializer):
+
+    payment_method = serializers.ChoiceField(
+        choices=PAYMENT_METHODS_IN_USE,
+        error_messages={'required': "To'lov turini tanlang: naqd yoki karta."}
+    )
 
     class Meta:
 
@@ -171,9 +179,10 @@ class ExpenseCreateSerializer(serializers.ModelSerializer):
 
             raise serializers.ValidationError("Kategoriya topilmadi.")
 
-        if value.type != FinanceTransactionType.CHIQIM:
+        # Qabul to'lovlari avtomatik hisoblanadi, ularni qo'lda kiritib bo'lmaydi
+        if value.is_system:
 
-            raise serializers.ValidationError("Kategoriya chiqim turida bo'lishi kerak.")
+            raise serializers.ValidationError("Bu kategoriyaga qo'lda yozib bo'lmaydi.")
 
         if value.archived:
 
@@ -221,8 +230,8 @@ class ExpenseUpdateSerializer(serializers.ModelSerializer):
 
             raise serializers.ValidationError("Kategoriya topilmadi.")
 
-        if value.type != FinanceTransactionType.CHIQIM:
+        if value.is_system or value.type != self.instance.category.type:
 
-            raise serializers.ValidationError("Kategoriya chiqim turida bo'lishi kerak.")
+            raise serializers.ValidationError("Kategoriya turi mos emas.")
 
         return value

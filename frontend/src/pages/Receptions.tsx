@@ -8,6 +8,7 @@ import { BsTelephone } from "react-icons/bs";
 import { Link } from "react-router-dom";
 import dayjs, { Dayjs } from "dayjs";
 import { LuSearch } from "react-icons/lu";
+import VisitPayment from "../components/VisitPayment";
 import { getVisitStatusBadge } from "../utils/visitStatus";
 import { useDebouncedValue } from "../utils/useDebouncedValue";
 import "../App.css";
@@ -190,6 +191,14 @@ export default function Receptions() {
                   >
                     {badge.label}
                   </span>
+                  <VisitPayment
+                    patientId={visit.patient?.id}
+                    visitId={visit.id}
+                    amount={Number(visit.total_price || 0)}
+                    paymentMethodDisplay={visit.payment_method_display}
+                    canPay
+                    disabled={visit.status === "cancelled"}
+                  />
                 </div>
               </Link>
             );

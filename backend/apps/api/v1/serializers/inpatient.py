@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from apps.inpatient.models import Room, Bed, Admission, AdmissionNote, AdmissionService
 from apps.patients.models import Patient
-from apps.shared.choices import AdmissionStatus, StatusTextChoices, UserRole
+from apps.shared.choices import AdmissionStatus, PAYMENT_METHODS_IN_USE, StatusTextChoices, UserRole
 
 
 class BedOccupantSerializer(serializers.Serializer):
@@ -354,6 +354,8 @@ class AdmissionDetailSerializer(AdmissionListSerializer):
             'doctor_id',
             'daily_price',
             'discharge_notes',
+            'payment_method',
+            'paid_amount',
             'created_by',
             'notes',
             'services',
@@ -471,6 +473,11 @@ class AdmissionDischargeSerializer(serializers.Serializer):
     discharge_diagnosis = serializers.CharField(required=False, allow_blank=True)
 
     discharge_notes = serializers.CharField(required=False, allow_blank=True)
+
+    payment_method = serializers.ChoiceField(
+        choices=PAYMENT_METHODS_IN_USE,
+        error_messages={'required': "To'lov turini tanlang: naqd yoki karta."}
+    )
 
     def validate_discharged_at(self, value):
 

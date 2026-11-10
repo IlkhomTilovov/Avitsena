@@ -1,6 +1,6 @@
 from decimal import Decimal
 from rest_framework import serializers
-from apps.shared.choices import StockMovementType
+from apps.shared.choices import PAYMENT_METHODS_IN_USE, StockMovementType
 from apps.warehouse.models import WarehouseItem, StockMovement
 
 
@@ -136,6 +136,7 @@ class StockMovementSerializer(serializers.ModelSerializer):
             'balance_after',
             'unit_price',
             'total',
+            'payment_method',
             'supplier',
             'expiry_date',
             'note',
@@ -163,6 +164,12 @@ class StockMovementCreateSerializer(serializers.Serializer):
     quantity = quantity_field(min_value=Decimal('0'))
 
     unit_price = serializers.IntegerField(min_value=0, required=False, allow_null=True)
+
+    payment_method = serializers.ChoiceField(
+        choices=PAYMENT_METHODS_IN_USE,
+        required=False,
+        allow_null=True
+    )
 
     supplier = serializers.CharField(required=False, allow_blank=True, max_length=255)
 
@@ -192,6 +199,10 @@ class StockMovementCreateSerializer(serializers.Serializer):
         if movement_type != StockMovementType.ADJUST and quantity <= 0:
 
             raise serializers.ValidationError({'quantity': "Miqdor noldan katta bo'lishi kerak."})
+
+        if movement_type == StockMovementType.IN and attrs.get('unit_price') and not attrs.get('payment_method'):
+
+            raise serializers.ValidationError({'payment_method': "Xarid uchun to'lov turini tanlang: naqd yoki karta."})
 
         if movement_type == StockMovementType.WRITE_OFF and not attrs.get('note', '').strip():
 
