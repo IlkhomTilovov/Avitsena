@@ -12,6 +12,22 @@ from rest_framework import status, serializers
 from drf_spectacular.utils import extend_schema, inline_serializer, OpenApiParameter
 from drf_spectacular.types import OpenApiTypes
 from apps.shared.utils import get_last_month_data, get_current_month_data
+from apps.shared.choices import FinanceTransactionType
+from apps.api.v1.views.finance import _collect_rows
+
+
+def _as_date(value):
+
+    return value.date() if isinstance(value, datetime) else value
+
+
+def _income_rows(clinic, date_from, date_to):
+
+    # Daromad Moliya bilan bir xil hisoblanadi: qabul va statsionar to'lovlari hamda qo'lda kiritilgan kirim
+    return [
+        row for row in _collect_rows(clinic, _as_date(date_from), _as_date(date_to))
+        if row['type'] == FinanceTransactionType.KIRIM
+    ]
 
 
 class ClinicStatsView(APIView):
@@ -90,29 +106,11 @@ class ClinicStatsView(APIView):
                     created_at__range=(start_of_day, end_of_day),
                     status=PatientVisitStatus.PENDING
                 )
-            ),
-            revenue_of_curr_month=Coalesce(
-                Sum(
-                    'total_price',
-                    filter=Q(
-                    created_at__date__range=(start_of_month, end_of_month)
-                    ),
-                ),
-                0
-            ),
-            revenue_of_last_month=Coalesce(
-                Sum(
-                    'total_price',
-                    filter=Q(
-                    created_at__date__range=(start_of_prev_month, end_of_prev_month)
-                )
-            ),
-            0
             )
         )
 
-        revenue_of_curr_month = visits_stats.pop('revenue_of_curr_month')
-        revenue_of_last_month = visits_stats.pop('revenue_of_last_month')
+        revenue_of_curr_month = sum(row['amount'] for row in _income_rows(clinic, start_of_month, end_of_month))
+        revenue_of_last_month = sum(row['amount'] for row in _income_rows(clinic, start_of_prev_month, end_of_prev_month))
         visits_stats['monthly_revenue'] = revenue_of_curr_month
 
         visits_stats['change_from_last_month'] = (
@@ -332,22 +330,13 @@ class RevenueStatsOfYearlyANDMonthlyView(APIView):
 
             start_of_month, end_of_month = get_current_month_data()
 
-            monthly_stats = PatientVisit.objects \
-                .filter(
-                    patient__clinic=clinic,
-                    created_at__date__range=(start_of_month, end_of_month)
-                ) \
-                .annotate(date=TruncDate('created_at')) \
-                .values('date') \
-                .annotate(daily_revenue=Sum('total_price')) \
-                .order_by('date')
-        
-            monthly_data = {
-                item['date']: {
-                    'daily_revenue': item['daily_revenue']
-                }
-                for item in monthly_stats
-            }
+            monthly_data = {}
+
+            for row in _income_rows(clinic, start_of_month, end_of_month):
+
+                day = timezone.localtime(row['date']).date()
+                monthly_data.setdefault(day, {'daily_revenue': 0})
+                monthly_data[day]['daily_revenue'] += row['amount']
 
             date_range = []
 
@@ -368,19 +357,13 @@ class RevenueStatsOfYearlyANDMonthlyView(APIView):
 
             current_year = timezone.now().year
         
-            yearly_stats = PatientVisit.objects \
-                .filter(patient__clinic=clinic, created_at__year=current_year) \
-                .annotate(month=ExtractMonth('created_at')) \
-                .values('month') \
-                .annotate(monthly_revenue=Sum('total_price')) \
-                .order_by('month')
-        
-            yearly_data = {
-                item['month']: {
-                    'monthly_revenue': item['monthly_revenue']
-                }
-                for item in yearly_stats
-            }
+            yearly_data = {}
+
+            for row in _income_rows(clinic, datetime(current_year, 1, 1), datetime(current_year, 12, 31)):
+
+                month = timezone.localtime(row['date']).month
+                yearly_data.setdefault(month, {'monthly_revenue': 0})
+                yearly_data[month]['monthly_revenue'] += row['amount']
 
             month_range = []
 

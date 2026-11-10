@@ -334,6 +334,8 @@ function AdmissionDrawer({
     queryClient.setQueryData(["admission", admissionId], result);
     queryClient.invalidateQueries(["admissions"]);
     queryClient.invalidateQueries(["inpatientRooms"]);
+    queryClient.invalidateQueries(["allStat"]);
+    queryClient.invalidateQueries(["tringleData"]);
   };
 
   const onError = (fallback: string) => (error: unknown) =>

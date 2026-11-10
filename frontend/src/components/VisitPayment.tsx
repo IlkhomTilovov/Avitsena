@@ -37,6 +37,8 @@ export default function VisitPayment({
         queryClient.invalidateQueries(["patientVisitesData"]);
         queryClient.invalidateQueries(["patient", patientId]);
         queryClient.invalidateQueries(["finance"]);
+        queryClient.invalidateQueries(["allStat"]);
+        queryClient.invalidateQueries(["tringleData"]);
       },
       onError: (error) =>
         api.error({

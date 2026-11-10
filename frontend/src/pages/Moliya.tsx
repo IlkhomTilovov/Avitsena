@@ -154,6 +154,8 @@ function EntryModal({
         notify("success", type === "kirim" ? "Kirim qo'shildi" : "Chiqim qo'shildi");
         queryClient.invalidateQueries(["finance"]);
         queryClient.invalidateQueries(["financeCategories"]);
+        queryClient.invalidateQueries(["allStat"]);
+        queryClient.invalidateQueries(["tringleData"]);
         onClose();
       },
       onError: (error) =>
